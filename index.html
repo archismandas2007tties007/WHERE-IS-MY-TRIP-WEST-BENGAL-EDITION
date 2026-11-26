@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Where is my trip — West Bengal Smart Travel &amp; Cultural Guide</title>
+  <meta name="description" content="Complete zero-API-key West Bengal travel guide with IRCTC & suburban trains, Google-reviewed stays, budget calculator, 6 languages, Leaflet maps & Open-Meteo weather." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500..700;1,6..72,500..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- ==================== FIXED TOP HEADER ==================== -->
+  <header class="top-header">
+    <div class="max-w-6xl mx-auto h-14 px-3 sm:px-5 flex items-center justify-between gap-2">
+      <button id="header-home-btn" type="button" class="flex items-center gap-2.5 min-w-0 text-left bg-transparent border-0 cursor-pointer p-0">
+        <div class="w-9 h-9 rounded-full overflow-hidden border border-[var(--border)] flex items-center justify-center bg-[var(--forest-soft)] flex-shrink-0">
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCllvm8620P5LQBak_DoDkRpyiiSbn4SV04itkO48UpzI6vqBw-pNB5H94T_8Fj0s9rh08Vpi6_VCkhJA90M7zdyEF7Xtqnxq7VkVGatuGEMeAdbQmH95_7ee3jl_n9KT6n31-rnQPRg4AQz7bc3cNJZycBigJk2I0gFxsxTBdAZX_H2H_qERhXpKdHF3EfTPWWZw3lKQY306jFJZ1pvdBlCtdnLhtG9H9wdTpyAhpUycgtEuxqBl50rw"
+            alt="Where is my trip emblem"
+            class="w-full h-full object-cover"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <span class="hidden w-full h-full items-center justify-center text-xs font-bold text-[var(--forest)]">WB</span>
+        </div>
+        <span class="font-semibold text-base tracking-tight truncate" style="color:var(--text)" data-i18n="appTitle">Where is my trip</span>
+      </button>
+
+      <div class="flex items-center gap-1.5 flex-shrink-0 no-print">
+        <!-- 6-Language Switcher -->
+        <div class="relative flex items-center">
+          <span class="material-symbols-outlined text-[16px] absolute left-2.5 pointer-events-none" style="color:var(--text-muted)">language</span>
+          <select id="lang-select" aria-label="Select Language" class="wb-select !w-auto !py-1.5 !pl-8 !pr-7 text-xs font-semibold cursor-pointer">
+            <option value="en">English</option>
+            <option value="bn">বাংলা</option>
+            <option value="hi">हिन्दी</option>
+            <option value="da">Dansk</option>
+            <option value="es">Español</option>
+            <option value="pt">Português</option>
+          </select>
+        </div>
+
+        <!-- Dark Mode Toggle -->
+        <button id="btn-theme-toggle" type="button" aria-label="Toggle Dark Mode" class="w-9 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] flex items-center justify-center cursor-pointer">
+          <span id="theme-icon" class="material-symbols-outlined text-[18px]" style="color:var(--text)">dark_mode</span>
+        </button>
+
+        <!-- Zero-API Badge -->
+        <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold" style="background:var(--forest-soft); color:var(--forest);">
+          <span class="material-symbols-outlined text-[14px]">bolt</span>
+          <span>0 API Keys</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN SHELL ==================== -->
+  <main class="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-5 pt-4 pb-24">
+
+    <!-- ==================== VIEW 1: PLAN (9-SECTION INTAKE) ==================== -->
+    <section id="view-plan" class="space-y-4">
+      <!-- 1. Starting City -->
+      <div class="wb-card">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-base" data-i18n="sec1Title">1. Starting City</h2>
+          <button id="btn-gps" type="button" class="choice-chip !py-1 !px-2.5 text-xs">
+            <span class="material-symbols-outlined text-[15px]" style="color:var(--forest)">my_location</span>
+            <span data-i18n="useGps">Use my GPS</span>
+          </button>
+        </div>
+        <input id="input-origin" type="text" class="wb-input" value="Kolkata" placeholder="Kolkata, Siliguri, New Delhi..." autocomplete="off" />
+        <div id="gps-note" class="text-[11px] mt-1 min-h-[14px]" style="color:var(--text-muted)"></div>
+        <div id="origin-chips" class="flex flex-wrap gap-2 mt-2">
+          <button type="button" class="choice-chip active-forest" data-value="Kolkata">Kolkata</button>
+          <button type="button" class="choice-chip" data-value="Siliguri">Siliguri</button>
+          <button type="button" class="choice-chip" data-value="New Delhi">New Delhi</button>
+          <button type="button" class="choice-chip" data-value="Mumbai">Mumbai</button>
+          <button type="button" class="choice-chip" data-value="Bengaluru">Bengaluru</button>
+        </div>
+      </div>
+
+      <!-- 2. Destination (5 West Bengal Categories - All 21 Places) -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-2" data-i18n="sec2Title">2. Destination (West Bengal)</h2>
+        <input id="input-destination" type="text" class="wb-input mb-3" value="Darjeeling" placeholder="Select a West Bengal region..." readonly />
+        <div id="destination-groups-container" class="space-y-3.5"></div>
+      </div>
+
+      <!-- 3. Start Date & Duration -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-3" data-i18n="sec3Title">3. Start Date &amp; Duration</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end mb-2.5">
+          <div>
+            <label for="input-start-date" class="block text-xs font-semibold mb-1" style="color:var(--text-muted)" data-i18n="departureDate">Departure Date</label>
+            <input id="input-start-date" type="date" class="wb-input" />
+          </div>
+          <div class="pb-2 text-xs font-medium" style="color:var(--text-muted)">
+            <span data-i18n="returnDate">Return Date:</span>
+            <strong id="return-date-label" class="ml-1" style="color:var(--text)">—</strong>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button type="button" class="choice-chip quick-date-btn" data-offset="1" data-i18n="tomorrow">Tomorrow</button>
+          <button type="button" class="choice-chip quick-date-btn" data-offset="saturday" data-i18n="nextSat">Next Saturday</button>
+          <button type="button" class="choice-chip quick-date-btn" data-offset="14" data-i18n="in2Weeks">In 2 Weeks</button>
+        </div>
+        <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)" data-i18n="tripLength">Trip Length (1–14 days)</label>
+        <div class="flex flex-wrap items-center gap-2" id="duration-row">
+          <button type="button" class="choice-chip dur-chip" data-days="1">1d</button>
+          <button type="button" class="choice-chip dur-chip" data-days="2">2d</button>
+          <button type="button" class="choice-chip dur-chip" data-days="3">3d</button>
+          <button type="button" class="choice-chip dur-chip" data-days="4">4d</button>
+          <button type="button" class="choice-chip dur-chip active-forest" data-days="5">5d</button>
+          <button type="button" class="choice-chip dur-chip" data-days="7">7d</button>
+          <button type="button" class="choice-chip dur-chip" data-days="10">10d</button>
+          <input id="input-days-custom" type="number" min="1" max="14" value="5" class="wb-input !w-20 text-center font-semibold" aria-label="Custom trip days" />
+        </div>
+      </div>
+
+      <!-- 4. Travelers & Rooms + 5. Travel Style -->
+      <div class="wb-card space-y-4">
+        <div>
+          <h2 class="font-semibold text-base" data-i18n="sec4Title">4. Travelers &amp; Rooms</h2>
+          <p class="text-xs mt-0.5 mb-2.5" style="color:var(--text-muted)">
+            <span data-i18n="totalTravelers">Total Travelers:</span> <strong id="total-travelers-val" style="color:var(--text)">3</strong> ·
+            <span data-i18n="estRooms">Estimated Rooms:</span> <strong id="est-rooms-val" style="color:var(--text)">1</strong>
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="stepper-row">
+              <span class="text-xs font-medium" data-i18n="adults">Adults (13–59)</span>
+              <div class="flex items-center gap-3">
+                <button type="button" class="stepper-btn" data-group="adults" data-delta="-1">−</button>
+                <span id="count-adults" class="w-4 text-center font-bold text-sm">2</span>
+                <button type="button" class="stepper-btn" data-group="adults" data-delta="1">+</button>
+              </div>
+            </div>
+            <div class="stepper-row">
+              <span class="text-xs font-medium" data-i18n="children">Children (5–12)</span>
+              <div class="flex items-center gap-3">
+                <button type="button" class="stepper-btn" data-group="children" data-delta="-1">−</button>
+                <span id="count-children" class="w-4 text-center font-bold text-sm">1</span>
+                <button type="button" class="stepper-btn" data-group="children" data-delta="1">+</button>
+              </div>
+            </div>
+            <div class="stepper-row">
+              <span class="text-xs font-medium" data-i18n="infants">Infants (&lt;5)</span>
+              <div class="flex items-center gap-3">
+                <button type="button" class="stepper-btn" data-group="infants" data-delta="-1">−</button>
+                <span id="count-infants" class="w-4 text-center font-bold text-sm">0</span>
+                <button type="button" class="stepper-btn" data-group="infants" data-delta="1">+</button>
+              </div>
+            </div>
+            <div class="stepper-row">
+              <span class="text-xs font-medium" data-i18n="seniors">Seniors (60+)</span>
+              <div class="flex items-center gap-3">
+                <button type="button" class="stepper-btn" data-group="seniors" data-delta="-1">−</button>
+                <span id="count-seniors" class="w-4 text-center font-bold text-sm">0</span>
+                <button type="button" class="stepper-btn" data-group="seniors" data-delta="1">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="font-semibold text-base mb-2" data-i18n="sec5Title">5. Travel Style</h2>
+          <div id="travel-style-chips" class="flex flex-wrap gap-2">
+            <button type="button" class="choice-chip style-chip" data-value="Solo">Solo</button>
+            <button type="button" class="choice-chip style-chip" data-value="Couple">Couple</button>
+            <button type="button" class="choice-chip style-chip active-forest" data-value="Family with kids">Family with kids</button>
+            <button type="button" class="choice-chip style-chip" data-value="Friends group">Friends group</button>
+            <button type="button" class="choice-chip style-chip" data-value="Elders-friendly">Elders-friendly</button>
+            <button type="button" class="choice-chip style-chip" data-value="Honeymoon">Honeymoon</button>
+            <button type="button" class="choice-chip style-chip" data-value="Photography/Trekking">Photography/Trekking</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Budget Tier & Optional Cap -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-2.5" data-i18n="sec6Title">6. Budget Tier &amp; Optional Cap</h2>
+        <div id="budget-tier-cards" class="space-y-2.5 mb-3">
+          <button type="button" class="option-card budget-card" data-tier="budget">
+            <div class="font-semibold text-sm">Backpacker / Budget</div>
+            <div class="text-xs font-bold mt-0.5" style="color:var(--terracotta)">₹1,500–3,000 pp/day</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Sleeper/3E rail, homestays, shared Sumos &amp; local pice hotels.</div>
+          </button>
+          <button type="button" class="option-card budget-card active" data-tier="mid">
+            <div class="font-semibold text-sm">Mid-Range</div>
+            <div class="text-xs font-bold mt-0.5" style="color:var(--terracotta)">₹3,500–7,000 pp/day</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">AC 3A/CC trains, boutique heritage stays &amp; balanced private cabs.</div>
+          </button>
+          <button type="button" class="option-card budget-card" data-tier="luxury">
+            <div class="font-semibold text-sm">Heritage / Luxury</div>
+            <div class="text-xs font-bold mt-0.5" style="color:var(--terracotta)">₹8,000+ pp/day</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">1A/EC rail or flights, iconic heritage resorts &amp; chauffeur SUVs.</div>
+          </button>
+        </div>
+        <label for="input-budget-cap" class="block text-xs font-semibold mb-1" style="color:var(--text-muted)" data-i18n="budgetCapLabel">Optional Group Budget Cap (₹)</label>
+        <input id="input-budget-cap" type="number" min="0" step="500" class="wb-input" placeholder="e.g. 55000" />
+      </div>
+
+      <!-- 7. Transit Priority -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-2.5" data-i18n="sec7Title">7. Transit Priority</h2>
+        <div id="priority-cards" class="space-y-2.5">
+          <button type="button" class="option-card priority-card" data-priority="fastest">
+            <div class="font-semibold text-sm">Fastest</div>
+            <div class="text-xs mt-0.5" style="color:var(--text-muted)">Flights + Cabs</div>
+          </button>
+          <button type="button" class="option-card priority-card" data-priority="scenic">
+            <div class="font-semibold text-sm">Scenic &amp; Budget-Friendly</div>
+            <div class="text-xs mt-0.5" style="color:var(--text-muted)">Express/Local Trains + Shared Transport</div>
+          </button>
+          <button type="button" class="option-card priority-card active-terracotta" data-priority="comfort">
+            <div class="font-semibold text-sm">Balanced Comfort</div>
+            <div class="text-xs mt-0.5" style="color:var(--text-muted)">AC Trains + Private Transfers</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 8. Interests -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-2.5" data-i18n="sec8Title">8. Interests</h2>
+        <div id="interests-chips" class="flex flex-wrap gap-2">
+          <button type="button" class="choice-chip interest-chip" data-value="Heritage & Temples">Heritage &amp; Temples</button>
+          <button type="button" class="choice-chip interest-chip active-forest" data-value="Food">Food</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Nature & Wildlife">Nature &amp; Wildlife</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Trekking">Trekking</button>
+          <button type="button" class="choice-chip interest-chip active-forest" data-value="Photography">Photography</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Tea Gardens">Tea Gardens</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Art & Crafts">Art &amp; Crafts</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Spiritual">Spiritual</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Beaches">Beaches</button>
+          <button type="button" class="choice-chip interest-chip" data-value="Offbeat">Offbeat</button>
+        </div>
+      </div>
+
+      <!-- 9. Food & Accessibility -->
+      <div class="wb-card">
+        <h2 class="font-semibold text-base mb-2.5" data-i18n="sec9Title">9. Food &amp; Accessibility</h2>
+        <div id="food-chips" class="flex flex-wrap gap-2 mb-3">
+          <button type="button" class="choice-chip food-chip" data-value="Vegetarian">Vegetarian</button>
+          <button type="button" class="choice-chip food-chip" data-value="Non-vegetarian">Non-vegetarian</button>
+          <button type="button" class="choice-chip food-chip" data-value="Pescatarian">Pescatarian</button>
+          <button type="button" class="choice-chip food-chip" data-value="Jain">Jain</button>
+          <button type="button" class="choice-chip food-chip active-terracotta" data-value="No preference">No preference</button>
+        </div>
+        <input id="input-accessibility" type="text" class="wb-input" data-i18n-placeholder="accessibilityPlaceholder" placeholder="Optional mobility, wheelchair, or senior pace note..." />
+      </div>
+
+      <!-- Bottom Action Buttons -->
+      <div class="space-y-2.5 pt-1">
+        <button id="btn-share-plan" type="button" class="btn-outline w-full">
+          <span class="material-symbols-outlined text-[18px]">share</span>
+          <span class="share-label" data-i18n="shareLink">Share Link</span>
+        </button>
+        <button id="btn-build-guide" type="button" class="btn-forest w-full text-sm">
+          <span class="material-symbols-outlined text-[19px]">auto_awesome</span>
+          <span data-i18n="buildGuideBtn">Build My A-to-Z Bengal Guide</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: BLUEPRINT (BUDGET FIRST + TRANSIT & STAYS + REST) ==================== -->
+    <section id="view-blueprint" class="hidden space-y-3.5">
+      <!-- Top Summary Header -->
+      <div class="wb-card !p-3.5">
+        <div id="bp-summary-title" class="font-bold text-sm sm:text-base">Kolkata → Darjeeling · 5 Days · 3 Travelers</div>
+        <div id="bp-summary-sub" class="text-xs mt-0.5 font-medium" style="color:var(--terracotta)">Instant West Bengal Database Guide (0 API keys used)</div>
+        <div class="flex flex-wrap gap-2 mt-2.5 no-print">
+          <button id="btn-modify-trip" type="button" class="btn-outline !py-1.5 !px-3 text-xs">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+            <span data-i18n="modifyTrip">Modify Trip</span>
+          </button>
+          <button id="btn-share-bp" type="button" class="btn-outline !py-1.5 !px-3 text-xs">
+            <span class="material-symbols-outlined text-[15px]">share</span>
+            <span class="share-label" data-i18n="shareLink">Share Link</span>
+          </button>
+          <button id="btn-print-bp" type="button" class="btn-outline !py-1.5 !px-3 text-xs">
+            <span class="material-symbols-outlined text-[15px]">print</span>
+            <span data-i18n="printGuide">Print / PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub-Tabs Strip (GRAND TOTAL / BUDGET & SMART TIPS FIRST!) -->
+      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 no-print" id="bp-tabs-bar" role="tablist">
+        <button type="button" class="bp-tab active" data-bp-tab="bp-budget">
+          <span class="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+          <span data-i18n="tabBudget">Budget &amp; Smart Tips</span>
+        </button>
+        <button type="button" class="bp-tab" data-bp-tab="bp-transit">
+          <span class="material-symbols-outlined text-[16px]">train</span>
+          <span data-i18n="tabTransit">Transit &amp; Stays</span>
+        </button>
+        <button type="button" class="bp-tab" data-bp-tab="bp-days">
+          <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+          <span data-i18n="tabDays">Day-by-Day</span>
+        </button>
+        <button type="button" class="bp-tab" data-bp-tab="bp-landmarks">
+          <span class="material-symbols-outlined text-[16px]">account_balance</span>
+          <span data-i18n="tabLandmarks">Landmarks</span>
+        </button>
+        <button type="button" class="bp-tab" data-bp-tab="bp-food">
+          <span class="material-symbols-outlined text-[16px]">restaurant</span>
+          <span data-i18n="tabFood">Food &amp; Gems</span>
+        </button>
+        <button type="button" class="bp-tab" data-bp-tab="bp-etiquette">
+          <span class="material-symbols-outlined text-[16px]">translate</span>
+          <span data-i18n="tabEtiquette">Etiquette &amp; Bangla</span>
+        </button>
+      </div>
+
+      <!-- Tab Panels -->
+      <div id="bp-budget" class="bp-panel space-y-4"></div>
+      <div id="bp-transit" class="bp-panel hidden space-y-4"></div>
+      <div id="bp-days" class="bp-panel hidden space-y-3"></div>
+      <div id="bp-landmarks" class="bp-panel hidden space-y-3"></div>
+      <div id="bp-food" class="bp-panel hidden space-y-4"></div>
+      <div id="bp-etiquette" class="bp-panel hidden space-y-4"></div>
+    </section>
+
+    <!-- ==================== VIEW 3: MAP & LIVE OPEN-METEO WEATHER ==================== -->
+    <section id="view-map" class="hidden space-y-4">
+      <div class="wb-card">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-base flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[20px]" style="color:var(--terracotta)">pin_drop</span>
+            <span id="map-title">West Bengal Route &amp; Waypoints</span>
+          </h2>
+          <button id="btn-fit-map" type="button" class="btn-outline !py-1 !px-2.5 text-xs">Fit Route</button>
+        </div>
+        <div id="bengal-map" class="w-full h-72 sm:h-80 rounded-xl border border-[var(--border)] z-10"></div>
+      </div>
+
+      <div class="wb-card">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h3 class="font-semibold text-sm flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]" style="color:var(--forest)">partly_cloudy_day</span>
+            <span>Open-Meteo Live Weather (No API Key)</span>
+          </h3>
+          <span id="weather-note-pill" class="text-[11px] font-semibold px-2 py-0.5 rounded-full" style="background:var(--forest-soft); color:var(--forest)">Loading...</span>
+        </div>
+        <div id="weather-strip" class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center"></div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: ANANDA OFFLINE ASSISTANT ==================== -->
+    <section id="view-ananda" class="hidden">
+      <div id="ananda-section" class="wb-card flex flex-col h-[70vh] max-h-[600px]">
+        <div class="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white" style="background:var(--forest)">আ</div>
+            <div>
+              <h2 class="font-bold text-sm">Ananda · আনন্দ</h2>
+              <p class="text-[11px]" style="color:var(--text-muted)">Offline Bengal Assistant (0 API Keys)</p>
+            </div>
+          </div>
+          <button id="btn-ananda-reset" type="button" class="btn-outline !py-1 !px-2.5 text-xs">Reset</button>
+        </div>
+
+        <div id="ananda-feed" class="flex-1 overflow-y-auto py-3 space-y-2.5 text-xs"></div>
+
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-2 border-t border-[var(--border)]">
+          <button type="button" class="choice-chip ananda-quick !py-1 !px-2.5 text-[11px] flex-shrink-0">Train prices &amp; timings?</button>
+          <button type="button" class="choice-chip ananda-quick !py-1 !px-2.5 text-[11px] flex-shrink-0">Hotel cost &amp; Google reviews?</button>
+          <button type="button" class="choice-chip ananda-quick !py-1 !px-2.5 text-[11px] flex-shrink-0">Total trip budget?</button>
+          <button type="button" class="choice-chip ananda-quick !py-1 !px-2.5 text-[11px] flex-shrink-0">Local food picks?</button>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <input id="ananda-input" type="text" class="wb-input flex-1" data-i18n-placeholder="anandaPlaceholder" placeholder="Ask Ananda about trains, budget, food..." />
+          <button id="ananda-send" type="button" class="btn-forest !py-2 !px-4">
+            <span class="material-symbols-outlined text-[18px]">send</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Disclaimer + About Link Footer -->
+    <footer class="mt-6 pt-4 border-t border-[var(--border)] text-center text-xs space-y-1.5" style="color:var(--text-muted)">
+      <p data-i18n="disclaimer">Fares, train timings, permits, and weather forecasts are estimates. Always verify with IRCTC, NTES, and official local operators before booking.</p>
+      <button id="btn-open-about" type="button" class="font-semibold underline cursor-pointer bg-transparent border-0" style="color:var(--text)" data-i18n="about">About</button>
+    </footer>
+  </main>
+
+  <!-- ==================== BOTTOM 4-ITEM NAVIGATION BAR ==================== -->
+  <nav class="bottom-nav no-print" aria-label="Main navigation">
+    <div class="max-w-xl mx-auto grid grid-cols-4">
+      <button type="button" class="bottom-nav-btn active" data-view="plan">
+        <span class="material-symbols-outlined text-[20px]">tune</span>
+        <span data-i18n="navPlan">Plan</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-view="blueprint">
+        <span class="material-symbols-outlined text-[20px]">explore</span>
+        <span data-i18n="navBlueprint">Blueprint</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-view="map">
+        <span class="material-symbols-outlined text-[20px]">map</span>
+        <span data-i18n="navMap">Map</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-view="ananda">
+        <span class="material-symbols-outlined text-[20px]">chat_bubble_outline</span>
+        <span data-i18n="navAnanda">Ananda</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== ABOUT CREATOR MODAL ==================== -->
+  <div id="about-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden no-print">
+    <div class="wb-card w-full max-w-md max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-serif-head text-lg font-bold" data-i18n="about">About</h3>
+        <button id="btn-close-about" type="button" class="w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center cursor-pointer bg-transparent" style="color:var(--text)">✕</button>
+      </div>
+      <div id="about-modal-body" class="space-y-3 text-xs"></div>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="data.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
