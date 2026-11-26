@@ -309,7 +309,7 @@
     }
   }
 
-  // ==================== OPEN-METEO WEATHER (NO API KEY) ====================
+  // ==================== OPEN-METEO WEATHER (ZERO API KEY) ====================
   function wmoToWeatherMeta(code) {
     if (code === 0) return { symbol: "wb_sunny", label: "Clear" };
     if (code <= 3) return { symbol: "partly_cloudy_day", label: "Partly cloudy" };
@@ -321,14 +321,104 @@
     return { symbol: "partly_cloudy_day", label: "Pleasant" };
   }
 
+  function toIsoDate(dt) {
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(
+      dt.getDate()
+    ).padStart(2, "0")}`;
+  }
+
+  function getTripDateList(startDateStr, daysCount) {
+    const start = new Date(`${startDateStr}T00:00:00`);
+    const safeStart = Number.isNaN(start.getTime()) ? new Date() : start;
+    const totalDays = Math.min(14, Math.max(1, Number(daysCount) || 3));
+    const list = [];
+    for (let d = 0; d < totalDays; d++) {
+      const dt = new Date(safeStart);
+      dt.setDate(safeStart.getDate() + d);
+      list.push(toIsoDate(dt));
+    }
+    return list;
+  }
+
+  function buildSeasonalDay(lat, destName, isoDate, dayIdx) {
+    const dt = new Date(`${isoDate}T00:00:00`);
+    const month = Number.isNaN(dt.getTime()) ? new Date().getMonth() : dt.getMonth(); // 0-11
+    const nameLower = normalizeSegment(destName);
+    const isHighHills = nameLower.includes("sandakphu") || nameLower.includes("lava") || nameLower.includes("rishop");
+    const isHills =
+      isHighHills ||
+      lat >= 26.8 ||
+      nameLower.includes("darjeeling") ||
+      nameLower.includes("kalimpong") ||
+      nameLower.includes("kurseong") ||
+      nameLower.includes("mirik") ||
+      nameLower.includes("sittong") ||
+      nameLower.includes("takdah");
+    const isCoastal =
+      nameLower.includes("digha") ||
+      nameLower.includes("mandarmani") ||
+      nameLower.includes("tajpur") ||
+      nameLower.includes("bakkhali") ||
+      nameLower.includes("sundarban");
+
+    // Monthly baseline [max, min, rainProb, wmoCode] for Bengal plains
+    const plainsProfile = [
+      [25, 13, 10, 1], // Jan
+      [29, 16, 10, 0], // Feb
+      [34, 21, 15, 1], // Mar
+      [36, 25, 25, 2], // Apr
+      [36, 26, 45, 80], // May
+      [34, 26, 70, 61], // Jun
+      [32, 26, 80, 63], // Jul
+      [32, 26, 75, 61], // Aug
+      [32, 25, 65, 80], // Sep
+      [31, 23, 35, 2], // Oct
+      [29, 18, 10, 0], // Nov
+      [26, 14, 5, 0]   // Dec
+    ];
+
+    const base = plainsProfile[month] || plainsProfile[10];
+    let max = base[0];
+    let min = base[1];
+    let rain = base[2];
+    let code = base[3];
+
+    if (isHighHills) {
+      max -= 16;
+      min -= 14;
+      if (month >= 5 && month <= 9) code = 45;
+      else if (month === 11 || month === 0 || month === 1) code = 2;
+    } else if (isHills) {
+      max -= 11;
+      min -= 10;
+      if (month >= 5 && month <= 9) code = 61;
+      else if (month === 10 || month === 11 || month === 0) code = 45;
+    } else if (isCoastal) {
+      max -= 2;
+      min += 2;
+      rain = Math.min(90, rain + 5);
+    }
+
+    const wave = ((dayIdx % 3) - 1);
+    return {
+      date: isoDate,
+      max: Math.round(max + wave),
+      min: Math.round(min + (dayIdx % 2 === 0 ? 0 : -1)),
+      code,
+      rain,
+      meta: wmoToWeatherMeta(code),
+      sourceType: "seasonal"
+    };
+  }
+
   async function resolveDestinationCoords(destinationName) {
     const known = global.WIMT_DATA.DESTINATIONS[destinationName];
-    if (known) return { lat: known.lat, lon: known.lon, resolvedName: destinationName };
+    if (known) return { lat: known.lat, lon: known.lon, resolvedName: destinationName, waypoints: known.waypoints || [] };
 
     const norm = normalizeSegment(destinationName);
     for (const [key, val] of Object.entries(global.WIMT_DATA.DESTINATIONS)) {
       if (normalizeSegment(key).includes(norm) || norm.includes(normalizeSegment(key))) {
-        return { lat: val.lat, lon: val.lon, resolvedName: key };
+        return { lat: val.lat, lon: val.lon, resolvedName: key, waypoints: val.waypoints || [] };
       }
     }
 
@@ -342,7 +432,8 @@
         return {
           lat: geoData.results[0].latitude,
           lon: geoData.results[0].longitude,
-          resolvedName: geoData.results[0].name
+          resolvedName: geoData.results[0].name,
+          waypoints: []
         };
       }
     }
@@ -358,71 +449,165 @@
         return {
           lat: fbData.results[0].latitude,
           lon: fbData.results[0].longitude,
-          resolvedName: fbData.results[0].name
+          resolvedName: fbData.results[0].name,
+          waypoints: []
         };
       }
     }
 
-    return { lat: 22.5726, lon: 88.3639, resolvedName: destinationName };
+    return { lat: 22.5726, lon: 88.3639, resolvedName: destinationName, waypoints: [] };
+  }
+
+  function buildForecastMap(dailyObj, sourceType) {
+    const map = new Map();
+    const times = dailyObj?.time || [];
+    const maxArr = dailyObj?.temperature_2m_max || [];
+    const minArr = dailyObj?.temperature_2m_min || [];
+    const codeArr = dailyObj?.weather_code || [];
+    const rainArr = dailyObj?.precipitation_probability_max || [];
+    const precipSumArr = dailyObj?.precipitation_sum || [];
+
+    for (let i = 0; i < times.length; i++) {
+      const rainProb =
+        rainArr[i] !== undefined && rainArr[i] !== null
+          ? Math.round(rainArr[i])
+          : precipSumArr[i] > 5
+          ? 70
+          : precipSumArr[i] > 0.5
+          ? 35
+          : 10;
+      const code = codeArr[i] ?? 1;
+      map.set(times[i], {
+        date: times[i],
+        max: Math.round(maxArr[i] ?? 26),
+        min: Math.round(minArr[i] ?? 16),
+        code,
+        rain: rainProb,
+        meta: wmoToWeatherMeta(code),
+        sourceType
+      });
+    }
+    return map;
+  }
+
+  function shiftIsoYear(isoDate, deltaYears) {
+    const dt = new Date(`${isoDate}T00:00:00`);
+    dt.setFullYear(dt.getFullYear() + deltaYears);
+    return toIsoDate(dt);
   }
 
   async function fetchWeatherForDestination(destinationName, startDateStr, daysCount) {
     const coords = await resolveDestinationCoords(destinationName);
-    const url =
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}` +
-      `&current=temperature_2m,weather_code` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
-      `&forecast_days=16&timezone=Asia%2FKolkata`;
+    const tripDates = getTripDateList(startDateStr, daysCount);
+    const waypoints = (coords.waypoints || []).slice(0, 6);
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Weather unavailable");
-    const data = await res.json();
+    const allPoints = [
+      { title: coords.resolvedName, lat: coords.lat, lon: coords.lon, isMain: true },
+      ...waypoints.map((wp) => ({
+        title: wp.title,
+        note: wp.note,
+        lat: wp.coords[0],
+        lon: wp.coords[1],
+        isMain: false
+      }))
+    ];
 
-    const dailyTimes = data?.daily?.time || [];
-    const maxArr = data?.daily?.temperature_2m_max || [];
-    const minArr = data?.daily?.temperature_2m_min || [];
-    const codeArr = data?.daily?.weather_code || [];
-    const rainArr = data?.daily?.precipitation_probability_max || [];
+    const latsParam = allPoints.map((p) => p.lat.toFixed(4)).join(",");
+    const lonsParam = allPoints.map((p) => p.lon.toFixed(4)).join(",");
 
-    const forecastByDate = new Map();
-    for (let i = 0; i < dailyTimes.length; i++) {
-      forecastByDate.set(dailyTimes[i], {
-        date: dailyTimes[i],
-        max: Math.round(maxArr[i]),
-        min: Math.round(minArr[i]),
-        code: codeArr[i],
-        rain: rainArr[i] ?? 0,
-        meta: wmoToWeatherMeta(codeArr[i])
-      });
+    let forecastItems = [];
+    let archiveItems = [];
+    let liveSuccess = false;
+
+    try {
+      const url =
+        `https://api.open-meteo.com/v1/forecast?latitude=${latsParam}&longitude=${lonsParam}` +
+        `&current=temperature_2m,weather_code` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+        `&forecast_days=16&timezone=Asia%2FKolkata`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const raw = await res.json();
+        forecastItems = Array.isArray(raw) ? raw : [raw];
+        liveSuccess = forecastItems.length > 0;
+      }
+    } catch (_) {
+      liveSuccess = false;
     }
 
-    const matchedDays = [];
-    const start = new Date(`${startDateStr}T00:00:00`);
-    const totalDays = Math.min(Number(daysCount) || 3, 7);
-    for (let d = 0; d < totalDays; d++) {
-      const dt = new Date(start);
-      dt.setDate(start.getDate() + d);
-      const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(
-        dt.getDate()
-      ).padStart(2, "0")}`;
-      if (forecastByDate.has(iso)) {
-        matchedDays.push(forecastByDate.get(iso));
+    // Check if any trip dates lie outside the 16-day live forecast window
+    const mainForecastMap = liveSuccess
+      ? buildForecastMap(forecastItems[0]?.daily, "live")
+      : new Map();
+    const missingDates = tripDates.filter((d) => !mainForecastMap.has(d));
+
+    if (missingDates.length > 0) {
+      try {
+        const archStart = shiftIsoYear(tripDates[0], -1);
+        const archEnd = shiftIsoYear(tripDates[tripDates.length - 1], -1);
+        const archUrl =
+          `https://archive-api.open-meteo.com/v1/archive?latitude=${latsParam}&longitude=${lonsParam}` +
+          `&start_date=${archStart}&end_date=${archEnd}` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia%2FKolkata`;
+        const archRes = await fetch(archUrl);
+        if (archRes.ok) {
+          const rawArch = await archRes.json();
+          archiveItems = Array.isArray(rawArch) ? rawArch : [rawArch];
+        }
+      } catch (_) {
+        archiveItems = [];
       }
     }
 
-    let beyond16Days = false;
-    let stripDays = matchedDays;
-    if (matchedDays.length === 0) {
-      beyond16Days = true;
-      stripDays = dailyTimes.slice(0, 5).map((t) => forecastByDate.get(t));
+    function buildPointDays(pointIdx, pointObj) {
+      const fMap = forecastItems[pointIdx]
+        ? buildForecastMap(forecastItems[pointIdx].daily, "live")
+        : new Map();
+      const aMap = archiveItems[pointIdx]
+        ? buildForecastMap(archiveItems[pointIdx].daily, "historical")
+        : new Map();
+
+      return tripDates.map((iso, idx) => {
+        if (fMap.has(iso)) return fMap.get(iso);
+        const prevYearIso = shiftIsoYear(iso, -1);
+        if (aMap.has(prevYearIso)) {
+          const hist = aMap.get(prevYearIso);
+          return { ...hist, date: iso };
+        }
+        return buildSeasonalDay(pointObj.lat, pointObj.title || destinationName, iso, idx);
+      });
     }
+
+    const mainDays = buildPointDays(0, allPoints[0]);
+    const hasLiveTripDays = mainDays.some((d) => d.sourceType === "live");
+    const hasHistoricalDays = mainDays.some((d) => d.sourceType === "historical");
+    const currentRaw = forecastItems[0]?.current;
+
+    const waypointWeather = allPoints.slice(1).map((pt, idx) => {
+      const ptDays = buildPointDays(idx + 1, pt);
+      const ptCurrent = forecastItems[idx + 1]?.current;
+      return {
+        title: pt.title,
+        note: pt.note || "",
+        coords: [pt.lat, pt.lon],
+        currentTemp: ptCurrent ? Math.round(ptCurrent.temperature_2m) : ptDays[0]?.max ?? 24,
+        currentMeta: ptCurrent
+          ? wmoToWeatherMeta(ptCurrent.weather_code)
+          : ptDays[0]?.meta ?? wmoToWeatherMeta(1),
+        days: ptDays
+      };
+    });
 
     return {
       location: coords.resolvedName,
-      currentTemp: Math.round(data?.current?.temperature_2m ?? 0),
-      currentMeta: wmoToWeatherMeta(data?.current?.weather_code ?? 0),
-      beyond16Days,
-      days: stripDays
+      currentTemp: currentRaw ? Math.round(currentRaw.temperature_2m) : mainDays[0]?.max ?? 24,
+      currentMeta: currentRaw
+        ? wmoToWeatherMeta(currentRaw.weather_code)
+        : mainDays[0]?.meta ?? wmoToWeatherMeta(1),
+      beyond16Days: !hasLiveTripDays,
+      sourceType: hasLiveTripDays ? "live" : hasHistoricalDays ? "historical" : "seasonal",
+      days: mainDays,
+      waypointWeather
     };
   }
 

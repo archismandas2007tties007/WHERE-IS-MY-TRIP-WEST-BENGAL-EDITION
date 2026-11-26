@@ -61,6 +61,12 @@
           <span class="material-symbols-outlined text-[14px]">bolt</span>
           <span>0 API Keys</span>
         </span>
+
+        <!-- Top-Right About Tab -->
+        <button id="btn-header-about" type="button" class="choice-chip !py-1.5 !px-2.5 text-xs font-semibold" aria-label="About">
+          <span class="material-symbols-outlined text-[16px]">info</span>
+          <span data-i18n="about">About</span>
+        </button>
       </div>
     </div>
   </header>
@@ -353,6 +359,7 @@
           <span id="weather-note-pill" class="text-[11px] font-semibold px-2 py-0.5 rounded-full" style="background:var(--forest-soft); color:var(--forest)">Loading...</span>
         </div>
         <div id="weather-strip" class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center"></div>
+        <p id="weather-advice" class="text-xs mt-2.5 pt-2.5 border-t border-[var(--border)]" style="color:var(--text-muted)"></p>
       </div>
     </section>
 
@@ -388,6 +395,9 @@
       </div>
     </section>
 
+    <!-- ==================== VIEW 5: ABOUT APP, CREATOR & PROJECTS ==================== -->
+    <section id="view-about" class="hidden space-y-4"></section>
+
     <!-- Disclaimer + About Link Footer -->
     <footer class="mt-6 pt-4 border-t border-[var(--border)] text-center text-xs space-y-1.5" style="color:var(--text-muted)">
       <p data-i18n="disclaimer">Fares, train timings, permits, and weather forecasts are estimates. Always verify with IRCTC, NTES, and official local operators before booking.</p>
@@ -395,9 +405,9 @@
     </footer>
   </main>
 
-  <!-- ==================== BOTTOM 4-ITEM NAVIGATION BAR ==================== -->
+  <!-- ==================== BOTTOM 5-ITEM NAVIGATION BAR ==================== -->
   <nav class="bottom-nav no-print" aria-label="Main navigation">
-    <div class="max-w-xl mx-auto grid grid-cols-4">
+    <div class="max-w-xl mx-auto grid grid-cols-5">
       <button type="button" class="bottom-nav-btn active" data-view="plan">
         <span class="material-symbols-outlined text-[20px]">tune</span>
         <span data-i18n="navPlan">Plan</span>
@@ -413,6 +423,10 @@
       <button type="button" class="bottom-nav-btn" data-view="ananda">
         <span class="material-symbols-outlined text-[20px]">chat_bubble_outline</span>
         <span data-i18n="navAnanda">Ananda</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-view="about">
+        <span class="material-symbols-outlined text-[20px]">info</span>
+        <span data-i18n="about">About</span>
       </button>
     </div>
   </nav>

@@ -12,17 +12,18 @@
     DESTINATIONS,
     BENGALI_PHRASEBOOK,
     ABOUT_INFO,
-    computeTripPlan
+    computeTripPlan,
+    getBuiltInWeather
   } = global.WIMT_DATA;
 
-  const { escapeHtml, fetchWeatherForDestination } = global.WIMT_API;
+  const { escapeHtml } = global.WIMT_API;
 
   const THEME_KEY = "wimt_theme";
   const LANG_KEY = "wimt_lang";
 
   const state = {
     lang: "en",
-    view: "plan", // plan | blueprint | map | ananda
+    view: "plan", // plan | blueprint | map | ananda | about
     bpTab: "bp-budget", // Budget & Smart Tips FIRST!
     stayFilter: "all",
     inputs: {
@@ -221,12 +222,16 @@
   // ==================== VIEW & TAB NAVIGATION ====================
   function switchView(viewName) {
     state.view = viewName;
-    ["plan", "blueprint", "map", "ananda"].forEach((v) => {
+    ["plan", "blueprint", "map", "ananda", "about"].forEach((v) => {
       $(`view-${v}`).classList.toggle("hidden", v !== viewName);
     });
     document.querySelectorAll(".bottom-nav-btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === viewName);
     });
+    const headerAboutBtn = $("btn-header-about");
+    if (headerAboutBtn) {
+      headerAboutBtn.classList.toggle("active-forest", viewName === "about");
+    }
     if (viewName === "map") {
       setTimeout(() => {
         if (state.mapInstance) state.mapInstance.invalidateSize();
@@ -260,9 +265,11 @@
         ? "Luxury"
         : "Mid-Range";
 
+    const builtInW = getBuiltInWeather(inp.destination, inp.startDate, plan.days);
     $("bp-summary-title").textContent = `${inp.startCity} → ${inp.destination.split(" (")[0]} • ${
       plan.days
     } Days • ${plan.totalTravelers} Travelers • ${tierLabel}`;
+    $("bp-summary-sub").textContent = `0 API Keys • Expected Weather: ${builtInW.days[0].max}°/${builtInW.days[0].min}°C (${builtInW.currentMeta.label}) · Best: ${builtInW.bestSeason}`;
 
     // ---------- TAB 1 (FIRST): BUDGET & SMART TIPS ----------
     const capVal = Number(inp.budgetCap) || 0;
@@ -486,19 +493,8 @@
       btn.addEventListener("click", () => switchView("map"));
     });
 
-    // ---------- TAB 3: DAY-BY-DAY ROUTE ----------
-    $("bp-days").innerHTML = plan.daysList
-      .map(
-        (txt, i) => `
-      <div class="wb-card flex gap-3 items-start">
-        <div class="px-2.5 py-1.5 rounded-lg text-center flex-shrink-0" style="background:var(--forest-soft); color:var(--forest)">
-          <div class="text-xs font-bold">Day ${i + 1}</div>
-          <div class="text-[10px]">${escapeHtml(formatShortDate(inp.startDate, i))}</div>
-        </div>
-        <p class="text-xs sm:text-sm">${escapeHtml(txt)}</p>
-      </div>`
-      )
-      .join("");
+    // ---------- TAB 3: DAY-TO-DAY ITINERARY (WITH WEATHER FOR EVERY DAY) ----------
+    renderItineraryDaysTab(plan, inp, builtInW);
 
     // ---------- TAB 4: LANDMARKS ----------
     $("bp-landmarks").innerHTML = (destData.landmarks || [])
@@ -603,32 +599,63 @@
     }
   }
 
-  async function loadWeather(destName, startDate, days) {
-    const reqId = ++state.weatherReqId;
-    $("weather-note-pill").textContent = "Loading...";
-    $("weather-strip").innerHTML = "";
-    try {
-      const w = await fetchWeatherForDestination(destName, startDate, days);
-      if (reqId !== state.weatherReqId) return;
-      $("weather-note-pill").textContent = w.beyond16Days
-        ? `${w.currentTemp}°C now • Next 5 days`
-        : `${w.currentTemp}°C now • Live`;
-      $("weather-strip").innerHTML = w.days
-        .map(
-          (d) => `
-        <div class="wb-subcard">
-          <div class="text-[11px] font-semibold" style="color:var(--text-muted)">${escapeHtml(formatShortDate(d.date, 0))}</div>
-          <span class="material-symbols-outlined my-1 text-[20px]" style="color:var(--forest)">${d.meta.symbol}</span>
-          <div class="text-xs font-bold">${d.max}° / ${d.min}°C</div>
-          <div class="text-[10px]" style="color:var(--text-muted)">💧 ${d.rain}%</div>
-        </div>`
-        )
-        .join("");
-    } catch (_) {
-      if (reqId !== state.weatherReqId) return;
-      $("weather-note-pill").textContent = "Offline";
-      $("weather-strip").innerHTML = `<div class="col-span-full text-xs py-2" style="color:var(--text-muted)">Weather forecast unavailable offline.</div>`;
+  function renderItineraryDaysTab(plan, inp, weatherData) {
+    const wDays = (weatherData && weatherData.days) || [];
+    $("bp-days").innerHTML = plan.daysList
+      .map((txt, i) => {
+        const dw = wDays[i] || wDays[wDays.length - 1];
+        const weatherPill = dw
+          ? `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold mb-1.5" style="background:var(--card-subtle); border:1px solid var(--border);">
+              <span class="material-symbols-outlined text-[15px]" style="color:var(--forest)">${escapeHtml(dw.meta.symbol)}</span>
+              <span>${dw.max}° / ${dw.min}°C</span>
+              <span style="color:var(--text-muted)">· ${escapeHtml(dw.meta.label)}</span>
+              <span style="color:var(--text-muted)">· 💧 ${dw.rain}%</span>
+            </div>`
+          : "";
+
+        return `
+          <div class="wb-card flex gap-3 items-start">
+            <div class="px-2.5 py-1.5 rounded-lg text-center flex-shrink-0" style="background:var(--forest-soft); color:var(--forest)">
+              <div class="text-xs font-bold">Day ${i + 1}</div>
+              <div class="text-[10px]">${escapeHtml(formatShortDate(inp.startDate, i))}</div>
+            </div>
+            <div class="min-w-0 flex-1">
+              ${weatherPill}
+              <p class="text-xs sm:text-sm">${escapeHtml(txt)}</p>
+            </div>
+          </div>`;
+      })
+      .join("");
+  }
+
+  function renderWeatherUI(w, builtInMeta) {
+    const labelSuffix = w.source === "builtin" ? "Built-in Climate" : "Live Forecast";
+    $("weather-note-pill").textContent = `${w.currentTemp}°C • ${w.currentMeta.label} (${labelSuffix})`;
+    $("weather-strip").innerHTML = (w.days || [])
+      .slice(0, 5)
+      .map(
+        (d) => `
+      <div class="wb-subcard">
+        <div class="text-[11px] font-semibold" style="color:var(--text-muted)">${escapeHtml(formatShortDate(d.date, 0))}</div>
+        <span class="material-symbols-outlined my-1 text-[20px]" style="color:var(--forest)">${escapeHtml(d.meta.symbol)}</span>
+        <div class="text-xs font-bold">${d.max}° / ${d.min}°C</div>
+        <div class="text-[10px]" style="color:var(--text-muted)">💧 ${d.rain}%</div>
+      </div>`
+      )
+      .join("");
+
+    if ($("weather-advice") && builtInMeta) {
+      $("weather-advice").innerHTML = `<strong>Best Season:</strong> ${escapeHtml(
+        builtInMeta.bestSeason
+      )} · <strong>Packing Tip:</strong> ${escapeHtml(builtInMeta.packingTip)}`;
     }
+  }
+
+  function loadWeather(destName, startDate, days) {
+    // Purely built-in 12-month West Bengal weather database (0 APIs, 0 network calls)
+    const builtIn = getBuiltInWeather(destName, startDate, days);
+    renderWeatherUI(builtIn, builtIn);
+    if (state.planResult) renderItineraryDaysTab(state.planResult, state.inputs, builtIn);
   }
 
   // ==================== ANANDA OFFLINE SMART ASSISTANT (0 API KEYS) ====================
@@ -671,6 +698,11 @@
     }
     if (q.includes("budget") || q.includes("cost") || q.includes("total") || q.includes("tip")) {
       return `Estimated Total for ${plan.totalTravelers} travelers (${plan.days}d, ${plan.rooms} room): ${formatINR(plan.grandTotalGroup)} (${formatINR(plan.grandTotalPP)}/person). Top tip: ${(plan.smartTips || [])[0]}`;
+    }
+    if (q.includes("weather") || q.includes("climate") || q.includes("temp") || q.includes("rain") || q.includes("cold") || q.includes("wear") || q.includes("pack")) {
+      const w = getBuiltInWeather(dest, state.inputs.startDate, plan.days);
+      const day0 = w.days[0];
+      return `Weather in ${w.location} around ${formatShortDate(state.inputs.startDate, 0)}: ${day0.max}°/${day0.min}°C (${day0.meta.label}, ~${day0.rain}% rain chance). Best season: ${w.bestSeason}. Tip: ${w.packingTip}`;
     }
     if (q.includes("food") || q.includes("eat") || q.includes("veg")) {
       return `Top ${state.inputs.foodPref} picks in ${dest}: ${plan.foodList.slice(0, 3).join(" • ")}`;
@@ -726,26 +758,101 @@
     }
   }
 
-  function renderAboutModal() {
-    $("about-modal-body").innerHTML = `
-      <div>
-        <div class="text-sm font-bold">${escapeHtml(ABOUT_INFO.creatorName)}</div>
-        <div style="color:var(--text-muted)">${escapeHtml(ABOUT_INFO.creatorRole)} · ${escapeHtml(ABOUT_INFO.institution)}</div>
-        <div class="mt-1 font-semibold">Phone / WhatsApp: ${escapeHtml(ABOUT_INFO.phone)}</div>
+  function renderAboutScreen() {
+    const capsHtml = (ABOUT_INFO.capabilities || [])
+      .map(
+        (c) => `
+      <div class="wb-subcard !p-2.5 flex items-center gap-2 text-xs">
+        <span class="material-symbols-outlined text-[17px]" style="color:var(--terracotta)">${escapeHtml(c.icon)}</span>
+        <span class="font-medium">${escapeHtml(c.label)}</span>
+      </div>`
+      )
+      .join("");
+
+    const projectsHtml = (ABOUT_INFO.projects || [])
+      .map(
+        (p) => `
+      <div class="wb-subcard">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <h4 class="font-bold text-sm flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]" style="color:var(--forest)">${escapeHtml(p.icon)}</span>
+            <span>${escapeHtml(p.title)}</span>
+          </h4>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded" style="background:var(--terracotta-soft); color:var(--terracotta)">${escapeHtml(p.badge)}</span>
+        </div>
+        <p class="text-xs" style="color:var(--text-muted)">${escapeHtml(p.desc)}</p>
+      </div>`
+      )
+      .join("");
+
+    $("view-about").innerHTML = `
+      <!-- Platform Blueprint Card -->
+      <div class="wb-card space-y-3">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--terracotta)">Platform Blueprint</span>
+          <h2 class="font-serif-head text-2xl font-bold mt-0.5">Where is my trip</h2>
+          <p class="text-sm font-semibold mt-0.5" style="color:var(--forest)">${escapeHtml(ABOUT_INFO.tagline)}</p>
+        </div>
+        <p class="text-xs sm:text-sm leading-relaxed" style="color:var(--text-muted)">${escapeHtml(ABOUT_INFO.note)}</p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-[var(--border)]">
+          ${capsHtml}
+        </div>
+
+        <div class="wb-subcard flex items-start gap-2 text-xs" style="color:var(--text-muted)">
+          <span class="material-symbols-outlined text-[17px] flex-shrink-0" style="color:var(--terracotta)">info</span>
+          <span><strong>Accuracy &amp; Verification Notice:</strong> ${escapeHtml(ABOUT_INFO.accuracyNotice)}</span>
+        </div>
       </div>
-      <p style="color:var(--text-muted)">${escapeHtml(ABOUT_INFO.note)}</p>
-      <div class="space-y-2">
-        ${ABOUT_INFO.projects
-          .map(
-            (p) => `
-          <div class="wb-subcard">
-            <div class="font-bold">${escapeHtml(p.title)} <span class="text-[10px]" style="color:var(--terracotta)">(${escapeHtml(p.badge)})</span></div>
-            <p class="mt-0.5" style="color:var(--text-muted)">${escapeHtml(p.desc)}</p>
-          </div>`
-          )
-          .join("")}
+
+      <!-- About the Creator Card (with Picture & Phone Copy) -->
+      <div class="wb-card space-y-3.5">
+        <div class="flex items-center gap-3.5">
+          <div class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-[var(--terracotta)]/30 bg-[var(--forest-soft)] flex items-center justify-center shadow-sm">
+            <img
+              src="${escapeHtml(ABOUT_INFO.avatarUrl)}"
+              alt="${escapeHtml(ABOUT_INFO.creatorName)}"
+              class="w-full h-full object-cover object-top"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <span class="hidden w-full h-full items-center justify-center text-base font-bold" style="color:var(--forest)">AD</span>
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10px] font-bold uppercase tracking-wider" style="color:var(--terracotta)">Lead Developer &amp; Designer</span>
+            <h3 class="font-serif-head text-lg font-bold truncate">${escapeHtml(ABOUT_INFO.creatorName)}</h3>
+            <p class="text-xs" style="color:var(--text-muted)">${escapeHtml(ABOUT_INFO.creatorRole)}</p>
+            <p class="text-xs font-semibold mt-0.5">${escapeHtml(ABOUT_INFO.institution)}</p>
+          </div>
+        </div>
+
+        <div class="wb-subcard flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-xs">
+            <span class="material-symbols-outlined text-[18px]" style="color:var(--forest)">phone</span>
+            <span>Phone / WhatsApp: <strong>${escapeHtml(ABOUT_INFO.phone)}</strong></span>
+          </div>
+          <button id="btn-copy-phone" type="button" class="btn-forest !py-1.5 !px-3 text-xs">
+            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+            <span id="copy-phone-label">Copy</span>
+          </button>
+        </div>
+
+        <div class="space-y-2.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider block">Featured Innovations</span>
+          ${projectsHtml}
+        </div>
       </div>
     `;
+
+    $("btn-copy-phone")?.addEventListener("click", () => {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(ABOUT_INFO.phone).then(() => {
+          $("copy-phone-label").textContent = "Copied!";
+          setTimeout(() => {
+            if ($("copy-phone-label")) $("copy-phone-label").textContent = "Copy";
+          }, 1800);
+        });
+      }
+    });
   }
 
   // ==================== INIT ====================
@@ -775,10 +882,11 @@
     setDestination(state.inputs.destination);
     syncDurationUI(state.inputs.days);
     syncTravelersUI();
-    renderAboutModal();
+    renderAboutScreen();
 
     // Header actions
     $("header-home-btn").addEventListener("click", () => switchView("plan"));
+    $("btn-header-about").addEventListener("click", () => switchView("about"));
     $("btn-theme-toggle").addEventListener("click", () =>
       applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark")
     );
@@ -907,12 +1015,8 @@
       btn.addEventListener("click", () => handleAnandaSend(btn.textContent));
     });
 
-    // About Modal
-    $("btn-open-about").addEventListener("click", () => $("about-modal").classList.remove("hidden"));
-    $("btn-close-about").addEventListener("click", () => $("about-modal").classList.add("hidden"));
-    $("about-modal").addEventListener("click", (e) => {
-      if (e.target.id === "about-modal") $("about-modal").classList.add("hidden");
-    });
+    // About Screen triggers
+    $("btn-open-about").addEventListener("click", () => switchView("about"));
 
     // Apply saved/URL language and precompute initial plan silently (zero API keys)
     applyLanguage(state.lang);

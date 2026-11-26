@@ -922,10 +922,23 @@
     creatorRole: "1st-semester Information Technology (IT) student",
     institution: "Government College of Engineering and Textile Technology, Serampore (GCETTS)",
     phone: "7003544868",
+    avatarUrl: "/assets/aistudio/WhatsApp_Image_2026-11-19_at_9.15.11_PM_6f5b45a9.jpeg",
+    creatorPhoto: "/assets/aistudio/WhatsApp_Image_2026-11-19_at_9.15.11_PM_6f5b45a9.jpeg",
+    tagline: "Your Ultimate West Bengal Tour Companion",
+    appName: "Where is my trip — Your Ultimate West Bengal Tour Companion",
     note: "Where is my trip was built exclusively for West Bengal travelers so you get real suburban EMU trains (Sundarbans & Hooghly Heritage Trail), express IRCTC fares, bus & cab prices, Google-reviewed stays, multi-language support (English, Bangla, Hindi, Danish, Spanish, Portuguese), and instant budget breakdowns — completely offline-ready without needing any API key.",
+    accuracyNotice: "Fares, train timings, permits, and climate forecasts are curated estimates. Always verify live availability and schedules on IRCTC, NTES, and official local operators before booking.",
+    capabilities: [
+      { icon: "train", label: "IRCTC & Suburban EMU Rail" },
+      { icon: "account_balance_wallet", label: "Smart INR Budget Engine" },
+      { icon: "hotel", label: "Google-Reviewed Stays" },
+      { icon: "map", label: "Leaflet Routes & Weather" },
+      { icon: "translate", label: "6 Languages + Phrasebook" },
+      { icon: "chat_bubble_outline", label: "Ananda Offline Assistant" }
+    ],
     projects: [
       { title: "Smart Rider Helmet", badge: "IoT & Safety", icon: "sports_motorsports", desc: "Two-wheeler safety ecosystem integrating alcohol breathalyzer interlocking, crash accelerometer telemetry, and automated GPS distress alerts." },
-      { title: "Where is my trip", badge: "West Bengal Guide", icon: "travel_explore", desc: "Zero-API-key database-powered West Bengal cultural, rail, budget, weather & map companion." }
+      { title: "Where is my trip", badge: "West Bengal Guide", icon: "travel_explore", desc: "Zero-API-key database-powered West Bengal cultural, rail, budget, weather & map companion covering 21 destinations across 5 regions." }
     ]
   };
 
@@ -1052,12 +1065,136 @@
     };
   }
 
+  // ==================== BUILT-IN SEASONAL WEATHER ENGINE (0 API KEYS) ====================
+  function getBuiltInWeather(destName, startDateStr, daysCount) {
+    const cleanName = String(destName || "Darjeeling").split(" (")[0];
+    const dtStart = startDateStr ? new Date(`${startDateStr}T00:00:00`) : new Date();
+    const baseDate = Number.isNaN(dtStart.getTime()) ? new Date() : dtStart;
+    const month = baseDate.getMonth(); // 0 = Jan .. 11 = Dec
+    const totalDays = Math.min(14, Math.max(1, Number(daysCount) || 5));
+
+    const lower = String(destName || "").toLowerCase();
+    let zone = "plains";
+    if (lower.includes("sandakphu")) zone = "alpine";
+    else if (
+      lower.includes("darjeeling") ||
+      lower.includes("kalimpong") ||
+      lower.includes("kurseong") ||
+      lower.includes("lava") ||
+      lower.includes("sittong")
+    ) {
+      zone = "hills";
+    } else if (lower.includes("dooars") || lower.includes("cooch behar")) {
+      zone = "foothills";
+    } else if (
+      lower.includes("digha") ||
+      lower.includes("mandarmani") ||
+      lower.includes("tajpur") ||
+      lower.includes("bakkhali") ||
+      lower.includes("sundarbans")
+    ) {
+      zone = "coast";
+    } else if (
+      lower.includes("purulia") ||
+      lower.includes("bishnupur") ||
+      lower.includes("shantiniketan") ||
+      lower.includes("jhargram")
+    ) {
+      zone = "rarh";
+    }
+
+    const profiles = {
+      alpine: {
+        bestSeason: "Oct–Dec & Mar–May",
+        packingTip: "Pack thermal base layers, down jacket, windproof gloves & headlamp.",
+        winter: { max: 8, min: -1, rain: 10, symbol: "ac_unit", label: "Crisp & Cold" },
+        summer: { max: 15, min: 6, rain: 25, symbol: "partly_cloudy_day", label: "Cool Ridge" },
+        monsoon: { max: 14, min: 9, rain: 85, symbol: "rainy", label: "Misty & Wet" },
+        autumn: { max: 11, min: 3, rain: 15, symbol: "wb_sunny", label: "Clear Peaks" }
+      },
+      hills: {
+        bestSeason: "Oct–Dec & Mar–May",
+        packingTip: "Carry warm woollens, light rain shell & comfortable walking shoes.",
+        winter: { max: 14, min: 5, rain: 10, symbol: "wb_sunny", label: "Crisp & Sunny" },
+        summer: { max: 22, min: 13, rain: 30, symbol: "partly_cloudy_day", label: "Pleasant Mist" },
+        monsoon: { max: 20, min: 15, rain: 82, symbol: "rainy", label: "Monsoon Mist" },
+        autumn: { max: 18, min: 10, rain: 18, symbol: "wb_sunny", label: "Clear Views" }
+      },
+      foothills: {
+        bestSeason: "Nov–Mar",
+        packingTip: "Light jacket for dawn safaris, mosquito repellent & neutral-tone wear.",
+        winter: { max: 23, min: 11, rain: 8, symbol: "wb_sunny", label: "Cool & Clear" },
+        summer: { max: 32, min: 22, rain: 35, symbol: "partly_cloudy_day", label: "Warm & Breezy" },
+        monsoon: { max: 30, min: 24, rain: 80, symbol: "rainy", label: "Heavy Showers" },
+        autumn: { max: 28, min: 18, rain: 20, symbol: "partly_cloudy_day", label: "Fresh & Green" }
+      },
+      coast: {
+        bestSeason: "Oct–Mar",
+        packingTip: "Breathable cottons, sunscreen, hat & a light windcheater for sea breeze.",
+        winter: { max: 26, min: 15, rain: 5, symbol: "wb_sunny", label: "Sunny Breeze" },
+        summer: { max: 34, min: 26, rain: 25, symbol: "wb_sunny", label: "Warm & Humid" },
+        monsoon: { max: 31, min: 26, rain: 75, symbol: "rainy", label: "Coastal Showers" },
+        autumn: { max: 30, min: 22, rain: 22, symbol: "partly_cloudy_day", label: "Pleasant Coast" }
+      },
+      rarh: {
+        bestSeason: "Oct–Feb",
+        packingTip: "Light layers for winter mornings, sun hat & hydration bottle.",
+        winter: { max: 25, min: 11, rain: 5, symbol: "wb_sunny", label: "Crisp Winter" },
+        summer: { max: 38, min: 25, rain: 15, symbol: "wb_sunny", label: "Dry & Warm" },
+        monsoon: { max: 32, min: 25, rain: 72, symbol: "rainy", label: "Lush Showers" },
+        autumn: { max: 30, min: 20, rain: 18, symbol: "partly_cloudy_day", label: "Festive Clear" }
+      },
+      plains: {
+        bestSeason: "Nov–Feb",
+        packingTip: "Light cottons, umbrella for sudden showers & light cardigan in Dec–Jan.",
+        winter: { max: 26, min: 14, rain: 5, symbol: "wb_sunny", label: "Pleasant Winter" },
+        summer: { max: 36, min: 26, rain: 22, symbol: "partly_cloudy_day", label: "Warm & Humid" },
+        monsoon: { max: 32, min: 26, rain: 76, symbol: "rainy", label: "Monsoon Showers" },
+        autumn: { max: 31, min: 22, rain: 20, symbol: "partly_cloudy_day", label: "Pujo Breeze" }
+      }
+    };
+
+    const p = profiles[zone];
+    let seasonObj = p.autumn;
+    if (month === 11 || month === 0 || month === 1) seasonObj = p.winter;
+    else if (month >= 2 && month <= 4) seasonObj = p.summer;
+    else if (month >= 5 && month <= 8) seasonObj = p.monsoon;
+
+    const days = [];
+    for (let i = 0; i < totalDays; i++) {
+      const dt = new Date(baseDate);
+      dt.setDate(baseDate.getDate() + i);
+      const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(
+        dt.getDate()
+      ).padStart(2, "0")}`;
+      const wave = (i % 3) - 1;
+      days.push({
+        date: iso,
+        max: seasonObj.max + wave,
+        min: seasonObj.min + (i % 2),
+        rain: Math.max(0, Math.min(95, seasonObj.rain + (i % 2 === 0 ? 0 : 5))),
+        meta: { symbol: seasonObj.symbol, label: seasonObj.label }
+      });
+    }
+
+    return {
+      location: cleanName,
+      source: "builtin",
+      currentTemp: Math.round((seasonObj.max + seasonObj.min) / 2),
+      currentMeta: { symbol: seasonObj.symbol, label: seasonObj.label },
+      bestSeason: p.bestSeason,
+      packingTip: p.packingTip,
+      days
+    };
+  }
+
   global.WIMT_DATA = {
     STARTING_CITIES,
     DESTINATION_GROUPS,
     DESTINATIONS,
     BENGALI_PHRASEBOOK,
     ABOUT_INFO,
-    computeTripPlan
+    computeTripPlan,
+    getBuiltInWeather
   };
 })(window);

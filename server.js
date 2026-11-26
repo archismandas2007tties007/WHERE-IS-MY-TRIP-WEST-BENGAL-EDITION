@@ -8,6 +8,12 @@ const HOST = "0.0.0.0";
 const rootDir = __dirname;
 
 app.use(
+  express.static(path.join(rootDir, "public"), {
+    fallthrough: true,
+  })
+);
+
+app.use(
   express.static(rootDir, {
     index: "index.html",
     extensions: ["html"],
