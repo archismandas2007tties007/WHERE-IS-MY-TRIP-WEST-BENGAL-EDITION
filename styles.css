@@ -1,60 +1,93 @@
 /* ==========================================================================
-   where is my trip — Warm Cream, Terracotta & Forest Green Editorial Design
-   Matches Screenshot UI + Full Dark Mode + Print CSS
+   Where is my trip — Stitch Warm Editorial M3 Design System
+   Light & Dark Modes + Print CSS + Leaflet & Mobile Thumb Ergonomics
    ========================================================================== */
 
 :root {
+  /* Surface Hierarchy (Stitch Warm Cream Editorial) */
+  --surface: #fbf9f1;
+  --surface-low: #f6f4ec;
+  --surface-container: #f0eee6;
+  --surface-high: #eae8e0;
+  --surface-highest: #e4e3db;
+  --surface-lowest: #ffffff;
+
+  /* Legacy aliases mapped to Stitch tokens for compatibility */
   --bg: #f6f4ec;
-  --card: #fdfcf8;
-  --card-subtle: #f1eee4;
-  --chip-bg: #f5f2e9;
-  --border: #e5dfd1;
-  --border-strong: #d0c7b4;
+  --card: #ffffff;
+  --card-subtle: #f0eee6;
+  --chip-bg: #f0eee6;
+  --border: #e4e3db;
+  --border-strong: #c0c9c2;
+  --hairline: rgba(27, 28, 23, 0.06);
 
-  --text: #1c2420;
-  --text-muted: #5a625d;
-  --text-soft: #7e857f;
+  /* Typography Ink */
+  --text: #1b1c17;
+  --text-muted: #404944;
+  --text-soft: #717973;
 
-  --forest: #1c4e3a;
-  --forest-hover: #143b2c;
-  --forest-soft: #e6f0eb;
+  /* Forest Primary */
+  --forest: #003725;
+  --forest-hover: #1c4e3a;
+  --forest-soft: #b9eed3;
+  --on-forest-soft: #002115;
 
-  --terracotta: #b84a27;
-  --terracotta-hover: #9a3b1d;
-  --terracotta-soft: #faebe5;
+  /* Terracotta Secondary */
+  --terracotta: #a53c1a;
+  --terracotta-hover: #842503;
+  --terracotta-soft: #ffdbd1;
+  --on-terracotta-soft: #3a0a00;
 
-  --gold: #a66208;
-  --gold-soft: #fcf1dc;
+  /* Warm Amber / Tertiary */
+  --gold: #673a00;
+  --gold-soft: #ffdcbe;
+  --amber-accent: #f3a149;
 
-  --shadow-sm: 0 2px 8px rgba(28, 36, 32, 0.04);
-  --shadow-md: 0 8px 24px rgba(28, 36, 32, 0.08);
+  /* Glass Bars & Elevation */
+  --header-glass: rgba(246, 244, 236, 0.86);
+  --nav-glass: rgba(251, 249, 241, 0.92);
+  --shadow-sm: 0 2px 10px rgba(27, 28, 23, 0.045);
+  --shadow-md: 0 8px 24px rgba(27, 28, 23, 0.08);
 }
 
 html.dark {
-  --bg: #111513;
-  --card: #191f1c;
-  --card-subtle: #212925;
-  --chip-bg: #26302b;
-  --border: #2e3a34;
-  --border-strong: #405048;
+  --surface: #121714;
+  --surface-low: #0e1210;
+  --surface-container: #1b221e;
+  --surface-high: #232c27;
+  --surface-highest: #2c3731;
+  --surface-lowest: #161c19;
+
+  --bg: #0e1210;
+  --card: #161c19;
+  --card-subtle: #1b221e;
+  --chip-bg: #1b221e;
+  --border: #2c3731;
+  --border-strong: #3f4e46;
+  --hairline: rgba(238, 242, 239, 0.08);
 
   --text: #eef2ef;
-  --text-muted: #aeb8b2;
+  --text-muted: #b5c0b9;
   --text-soft: #85918a;
 
   --forest: #2f7d5d;
-  --forest-hover: #3b9670;
-  --forest-soft: rgba(47, 125, 93, 0.2);
+  --forest-hover: #3c9470;
+  --forest-soft: rgba(47, 125, 93, 0.24);
+  --on-forest-soft: #b9eed3;
 
   --terracotta: #e36c46;
   --terracotta-hover: #f07e59;
-  --terracotta-soft: rgba(227, 108, 70, 0.18);
+  --terracotta-soft: rgba(227, 108, 70, 0.22);
+  --on-terracotta-soft: #ffdbd1;
 
-  --gold: #f0a846;
-  --gold-soft: rgba(240, 168, 70, 0.18);
+  --gold: #ffb871;
+  --gold-soft: rgba(243, 161, 73, 0.2);
+  --amber-accent: #f3a149;
 
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.5);
+  --header-glass: rgba(14, 18, 16, 0.86);
+  --nav-glass: rgba(18, 23, 20, 0.92);
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 *,
@@ -67,7 +100,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg);
+  background-color: var(--surface-low);
   color: var(--text);
   font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
@@ -93,14 +126,21 @@ body {
   font-family: "Newsreader", Georgia, serif;
 }
 
-/* Header & Bottom Bar */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================== HEADER & BOTTOM NAVIGATION ==================== */
 .top-header {
   position: sticky;
   top: 0;
-  z-index: 40;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
+  z-index: 50;
+  background: var(--header-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--hairline);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .bottom-nav {
@@ -108,9 +148,12 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 45;
-  background: var(--card);
-  border-top: 1px solid var(--border);
+  z-index: 50;
+  background: var(--nav-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 20px rgba(28, 36, 32, 0.08);
+  border-top: 1px solid var(--hairline);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -120,49 +163,63 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
+  min-height: 48px;
   padding: 8px 4px;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
   background: transparent;
   border: none;
+  transition: color 0.16s ease, transform 0.14s ease;
+}
+.bottom-nav-btn:hover {
+  color: var(--text);
 }
 .bottom-nav-btn.active {
   color: var(--terracotta);
   font-weight: 700;
 }
 
-/* Cards & Inputs */
+/* ==================== SURFACES & CARDS ==================== */
 .wb-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--surface-lowest);
+  border: 1px solid var(--hairline);
   border-radius: 16px;
   padding: 16px;
   box-shadow: var(--shadow-sm);
 }
 
 .wb-subcard {
-  background: var(--card-subtle);
-  border: 1px solid var(--border);
+  background: var(--surface-container);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 12px;
+}
+
+.wb-subcard-low {
+  background: var(--surface-low);
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .wb-input,
 .wb-select {
   width: 100%;
-  background: var(--chip-bg);
+  background: var(--surface-container);
   color: var(--text);
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 10px 12px;
   font-family: inherit;
   font-size: 13.5px;
   outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .wb-input:focus,
 .wb-select:focus {
+  background: var(--surface-lowest);
   border-color: var(--forest);
   box-shadow: 0 0 0 2px var(--forest-soft);
 }
@@ -172,79 +229,124 @@ html.dark .wb-select {
   color-scheme: dark;
 }
 
-/* Chips matching exact screenshots */
+/* ==================== CHIPS & PILL CONTROLS ==================== */
 .choice-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--chip-bg);
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: var(--surface-container);
   color: var(--text);
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
-  transition: all 0.14s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
 .choice-chip:hover {
-  border-color: var(--forest);
+  background: var(--surface-high);
 }
 .choice-chip.active-forest {
   background: var(--forest);
   color: #ffffff;
-  border-color: var(--forest);
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 55, 37, 0.22);
 }
 .choice-chip.active-terracotta {
   background: var(--terracotta);
   color: #ffffff;
-  border-color: var(--terracotta);
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(165, 60, 26, 0.22);
 }
 
-/* Tier & Radio Option Cards */
+/* ==================== OPTION & TIER CARDS ==================== */
 .option-card {
   width: 100%;
   text-align: left;
-  padding: 12px 14px;
+  padding: 13px 15px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--chip-bg);
+  border: 1.5px solid transparent;
+  background: var(--surface-container);
   color: var(--text);
   cursor: pointer;
-  transition: all 0.14s ease;
+  transition: all 0.15s ease;
 }
 .option-card:hover {
-  border-color: var(--forest);
+  background: var(--surface-high);
 }
 .option-card.active {
-  background: var(--card);
-  border: 1.5px solid var(--forest);
-  box-shadow: 0 0 0 1px var(--forest);
+  background: var(--forest-soft);
+  color: var(--on-forest-soft);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+.option-card.active .tier-subtext {
+  color: var(--on-forest-soft) !important;
+  opacity: 0.85;
 }
 .option-card.active-terracotta {
-  background: var(--card);
-  border: 1.5px solid var(--terracotta);
+  background: var(--terracotta-soft);
+  color: var(--on-terracotta-soft);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+.option-card.active-terracotta .priority-check {
+  opacity: 1 !important;
+}
+.option-card.active-terracotta .priority-subtext {
+  color: var(--on-terracotta-soft) !important;
+  opacity: 0.85;
 }
 
-/* Stepper controls */
+/* ==================== STEP ICON BOXES ==================== */
+.step-icon-mint {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--forest-soft);
+  color: var(--forest);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+html.dark .step-icon-mint {
+  color: var(--on-forest-soft);
+}
+
+.step-icon-peach {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--terracotta-soft);
+  color: var(--terracotta);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+html.dark .step-icon-peach {
+  color: var(--on-terracotta-soft);
+}
+
+/* ==================== STEPPERS ==================== */
 .stepper-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--chip-bg);
+  background: var(--surface-low);
+  border: 1px solid var(--hairline);
 }
 .stepper-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--card);
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-lowest);
   color: var(--text);
   font-weight: 700;
   font-size: 15px;
@@ -252,30 +354,46 @@ html.dark .wb-select {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.14s ease, color 0.14s ease, transform 0.1s ease;
+}
+.stepper-btn[data-delta="1"] {
+  background: var(--forest);
+  color: #ffffff;
+  border-color: transparent;
 }
 .stepper-btn:hover {
-  background: var(--forest);
-  color: #fff;
-  border-color: var(--forest);
+  transform: scale(1.06);
+}
+.stepper-btn[data-delta="-1"]:hover {
+  background: var(--surface-high);
+}
+.stepper-btn[data-delta="1"]:hover {
+  background: var(--forest-hover);
 }
 
-/* Primary Buttons */
+/* ==================== BUTTONS ==================== */
 .btn-forest {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
   background: var(--forest);
   color: #ffffff;
   font-weight: 600;
-  padding: 12px 18px;
+  padding: 10px 18px;
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 55, 37, 0.18);
+  transition: background-color 0.15s ease, transform 0.12s ease;
 }
 .btn-forest:hover {
   background: var(--forest-hover);
+}
+.btn-forest:active {
+  transform: scale(0.99);
 }
 
 .btn-outline {
@@ -283,58 +401,84 @@ html.dark .wb-select {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: var(--card);
+  min-height: 38px;
+  background: var(--surface-container);
   color: var(--text);
   font-weight: 600;
-  padding: 9px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border-strong);
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 .btn-outline:hover {
-  background: var(--card-subtle);
+  background: var(--surface-high);
 }
 
-/* Blueprint Sub-Tabs */
+/* ==================== BLUEPRINT HERO & SUB-TABS ==================== */
+.bp-hero-banner {
+  background: linear-gradient(135deg, #003725 0%, #1c4e3a 55%, #a53c1a 100%);
+  background-size: cover;
+  background-position: center;
+}
+
 .bp-tab {
   white-space: nowrap;
-  padding: 8px 13px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--card);
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  border: none;
+  background: var(--surface-container);
   color: var(--text-muted);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  transition: all 0.14s ease;
+  gap: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.bp-tab:hover {
+  background: var(--surface-high);
+  color: var(--text);
 }
 .bp-tab.active {
   background: var(--forest);
   color: #ffffff;
-  border-color: var(--forest);
+  box-shadow: 0 2px 8px rgba(0, 55, 37, 0.22);
 }
 
-/* Budget Table */
+/* ==================== STITCH BUDGET TABLE ==================== */
 .budget-table {
   width: 100%;
-  border-collapse: collapse;
-}
-.budget-table th,
-.budget-table td {
-  padding: 11px 8px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  vertical-align: top;
+  border-collapse: separate;
+  border-spacing: 0 4px;
 }
 .budget-table th {
+  padding: 0 10px 8px;
   font-weight: 600;
   color: var(--text-muted);
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.budget-table td {
+  padding: 10px;
+  font-size: 13.5px;
+  vertical-align: middle;
+}
+.budget-table tbody tr:nth-child(odd) td {
+  background: var(--surface-low);
+}
+.budget-table tbody tr:nth-child(odd) td:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+.budget-table tbody tr:nth-child(odd) td:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 .budget-table th.num,
 .budget-table td.num {
@@ -343,26 +487,104 @@ html.dark .wb-select {
   font-variant-numeric: tabular-nums;
 }
 .budget-table tr.total-row td {
-  border-bottom: none;
+  background: var(--forest);
+  color: #ffffff;
   font-weight: 700;
   font-size: 14.5px;
-  padding-top: 14px;
+  padding: 12px 10px;
+}
+.budget-table tr.total-row td:first-child {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.budget-table tr.total-row td:last-child {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
-/* Rating badge */
+/* ==================== BADGES & PILLS ==================== */
 .rating-pill {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 3px 10px;
+  border-radius: 9999px;
   background: var(--gold-soft);
   color: var(--gold);
   font-weight: 700;
   font-size: 12px;
 }
 
-/* Print CSS */
+.status-pill-forest {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: var(--forest-soft);
+  color: var(--on-forest-soft);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.status-pill-terracotta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: var(--terracotta-soft);
+  color: var(--on-terracotta-soft);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* ==================== ICON BADGE SQUARES ==================== */
+.icon-box-forest {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--forest-soft);
+  color: var(--on-forest-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-box-terracotta {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--terracotta-soft);
+  color: var(--on-terracotta-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ==================== MAP LEGEND & WAYPOINT STRIP ==================== */
+.map-legend-overlay {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 400;
+  background: var(--surface-lowest);
+  opacity: 0.94;
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  padding: 5px 10px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ==================== PRINT CSS ==================== */
 @media print {
   body {
     background: #fff !important;

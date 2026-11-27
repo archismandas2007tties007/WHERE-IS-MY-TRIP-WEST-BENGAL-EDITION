@@ -936,6 +936,18 @@
       { icon: "translate", label: "6 Languages + Phrasebook" },
       { icon: "chat_bubble_outline", label: "Ananda Offline Assistant" }
     ],
+    whyUseStats: [
+      { value: "18.5 Cr+", label: "Annual WB Domestic Visits", sub: "Ministry of Tourism & WB Tourism Department figures highlight surging regional travel demand." },
+      { value: "21 Hubs", label: "5 West Bengal Regions", sub: "From Sandakphu & Darjeeling hills to Sundarbans, Rarh Bengal & coastal Digha." },
+      { value: "0 API Keys", label: "100% Offline-Ready", sub: "Instant itinerary, 12-month climate forecasts & Ananda Q&A work even in zero-network zones." },
+      { value: "6 Languages", label: "Inclusive Travel Access", sub: "Full UI in English, বাংলা, हिन्दी, Dansk, Español & Português plus Bengali phrasebook." }
+    ],
+    whyUseReasons: [
+      { title: "Real Suburban EMU & IRCTC Rail Precision", desc: "Unlike generic travel apps, it pairs express IRCTC train numbers and fares with Sealdah/Howrah suburban EMUs for Sundarbans and the Hooghly Heritage Trail." },
+      { title: "Transparent INR Group Budgeting", desc: "Calculates per-person and group totals across room counts, traveler ages, transit priorities, and optional budget caps before you book." },
+      { title: "Built-in 12-Month Climate & Day-by-Day Forecasts", desc: "Every itinerary day displays expected temperatures, rain probability, and seasonal packing tips without relying on paid weather APIs." },
+      { title: "Curated Cultural Etiquette & Bengali Phrasebook", desc: "Equips domestic and international visitors with local dos/don'ts and phonetic Bengali phrases for seamless communication." }
+    ],
     projects: [
       { title: "Smart Rider Helmet", badge: "IoT & Safety", icon: "sports_motorsports", desc: "Two-wheeler safety ecosystem integrating alcohol breathalyzer interlocking, crash accelerometer telemetry, and automated GPS distress alerts." },
       { title: "Where is my trip", badge: "West Bengal Guide", icon: "travel_explore", desc: "Zero-API-key database-powered West Bengal cultural, rail, budget, weather & map companion covering 21 destinations across 5 regions." }

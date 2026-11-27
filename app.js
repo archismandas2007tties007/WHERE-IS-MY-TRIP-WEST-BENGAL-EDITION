@@ -113,12 +113,21 @@
   }
 
   // ==================== PLAN FORM RENDER & SYNC ====================
+  function syncPlanLiveBadge() {
+    const el = $("plan-live-badge-text");
+    if (!el) return;
+    const from = (state.inputs.startCity || "Kolkata").trim() || "Kolkata";
+    const to = (state.inputs.destination || "Darjeeling").split(" (")[0];
+    const d = Math.min(14, Math.max(1, Number(state.inputs.days) || 5));
+    el.textContent = `${from} → ${to} · ${d}d`;
+  }
+
   function renderDestinationGroups() {
     const container = $("destination-groups-container");
     container.innerHTML = DESTINATION_GROUPS.map(
       (grp) => `
       <div>
-        <div class="text-xs font-semibold mb-1.5" style="color:var(--text-muted)">${escapeHtml(grp.group)}</div>
+        <div class="text-[10.5px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text-muted)">${escapeHtml(grp.group)}</div>
         <div class="flex flex-wrap gap-2">
           ${grp.items
             .map((item) => {
@@ -136,7 +145,17 @@
   function syncReturnDate() {
     const start = state.inputs.startDate || getTodayIso();
     const days = Math.min(14, Math.max(1, Number(state.inputs.days) || 1));
-    $("return-date-label").textContent = formatShortDate(start, days - 1);
+    const dt = new Date(`${start}T00:00:00`);
+    if (!Number.isNaN(dt.getTime())) {
+      dt.setDate(dt.getDate() + (days - 1));
+      $("return-date-label").textContent = dt.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+    } else {
+      $("return-date-label").textContent = formatShortDate(start, days - 1);
+    }
   }
 
   function syncTravelersUI() {
@@ -160,6 +179,7 @@
       btn.classList.toggle("active-forest", Number(btn.dataset.days) === clamped);
     });
     syncReturnDate();
+    syncPlanLiveBadge();
   }
 
   function setStartingCity(city) {
@@ -168,6 +188,7 @@
     document.querySelectorAll("#origin-chips .choice-chip").forEach((btn) => {
       btn.classList.toggle("active-forest", btn.dataset.value.toLowerCase() === city.trim().toLowerCase());
     });
+    syncPlanLiveBadge();
   }
 
   function setDestination(dest) {
@@ -176,6 +197,7 @@
     document.querySelectorAll(".dest-chip").forEach((btn) => {
       btn.classList.toggle("active-forest", btn.dataset.dest === dest);
     });
+    syncPlanLiveBadge();
   }
 
   // ==================== GPS MATCHING ====================
@@ -270,6 +292,12 @@
       plan.days
     } Days • ${plan.totalTravelers} Travelers • ${tierLabel}`;
     $("bp-summary-sub").textContent = `0 API Keys • Expected Weather: ${builtInW.days[0].max}°/${builtInW.days[0].min}°C (${builtInW.currentMeta.label}) · Best: ${builtInW.bestSeason}`;
+    if ($("bp-hero-weather")) {
+      $("bp-hero-weather").textContent = `${builtInW.days[0].max}° / ${builtInW.days[0].min}°C ${builtInW.currentMeta.label}`;
+    }
+    if ($("bp-hero-season")) {
+      $("bp-hero-season").textContent = `Best: ${builtInW.bestSeason}`;
+    }
 
     // ---------- TAB 1 (FIRST): BUDGET & SMART TIPS ----------
     const capVal = Number(inp.budgetCap) || 0;
@@ -278,15 +306,24 @@
       const diff = capVal - plan.grandTotalGroup;
       capBanner =
         diff >= 0
-          ? `<div class="p-2.5 rounded-xl text-xs font-semibold mb-3 flex items-center gap-2" style="background:var(--forest-soft); color:var(--forest)">
+          ? `<div class="p-3 rounded-xl text-xs font-semibold flex items-center gap-2" style="background:var(--forest-soft); color:var(--on-forest-soft)">
               <span class="material-symbols-outlined text-[17px]">check_circle</span>
               <span>Within your ${formatINR(capVal)} group budget cap (${formatINR(diff)} buffer remaining).</span>
             </div>`
-          : `<div class="p-2.5 rounded-xl text-xs font-semibold mb-3 flex items-center gap-2" style="background:var(--terracotta-soft); color:var(--terracotta)">
+          : `<div class="p-3 rounded-xl text-xs font-semibold flex items-center gap-2" style="background:var(--terracotta-soft); color:var(--on-terracotta-soft)">
               <span class="material-symbols-outlined text-[17px]">info</span>
               <span>Estimated total exceeds your ${formatINR(capVal)} cap by ${formatINR(Math.abs(diff))} — check Scenic priority or Budget stays below.</span>
             </div>`;
     }
+
+    const barColors = ["#1c4e3a", "#003725", "#a53c1a", "#f3a149"];
+    const totalGroupBudget = Math.max(1, plan.grandTotalGroup || 1);
+    const stackedBarHtml = plan.budgetRows
+      .map((r, idx) => {
+        const pct = Math.max(4, Math.round((r.group / totalGroupBudget) * 100));
+        return `<div class="h-full" style="width:${pct}%; background:${barColors[idx % barColors.length]};" title="${escapeHtml(r.category)}: ${pct}%"></div>`;
+      })
+      .join("");
 
     const rowsHtml = plan.budgetRows
       .map(
@@ -302,38 +339,66 @@
     const tipsHtml = plan.smartTips
       .map(
         (tip) => `
-      <li class="flex items-start gap-2.5 text-xs sm:text-sm" style="color:var(--text-muted)">
-        <span class="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:var(--terracotta)"></span>
-        <span>${escapeHtml(tip)}</span>
+      <li class="wb-subcard-low flex items-start gap-2.5 text-xs sm:text-sm">
+        <span class="mt-2 w-2 h-2 rounded-full flex-shrink-0" style="background:var(--terracotta)"></span>
+        <span style="color:var(--text)">${escapeHtml(tip)}</span>
       </li>`
       )
       .join("");
 
     $("bp-budget").innerHTML = `
-      <div class="wb-card">
+      <div class="wb-card space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="icon-box-forest">
+              <span class="material-symbols-outlined text-[20px]">payments</span>
+            </div>
+            <div class="min-w-0">
+              <h2 class="font-semibold text-base truncate">Estimated Budget</h2>
+              <p class="text-xs" style="color:var(--text-muted)">${escapeHtml(tierLabel)} • ${plan.totalTravelers} travelers</p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0" style="background:var(--surface-container); color:var(--text-muted)">INR (₹)</span>
+        </div>
+
         ${capBanner}
-        <table class="budget-table">
-          <thead>
-            <tr>
-              <th>${escapeHtml(getTranslation(L, "catHeader"))}</th>
-              <th class="num">${escapeHtml(getTranslation(L, "perPerson"))}</th>
-              <th class="num">${escapeHtml(getTranslation(L, "groupTotal"))} (${plan.totalTravelers})</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-            <tr class="total-row">
-              <td>${escapeHtml(getTranslation(L, "estTotal"))}</td>
-              <td class="num">${formatINR(plan.grandTotalPP)}</td>
-              <td class="num" style="color:var(--forest)">${formatINR(plan.grandTotalGroup)}</td>
-            </tr>
-          </tbody>
-        </table>
+
+        <div class="w-full h-2.5 rounded-full overflow-hidden flex gap-0.5" style="background:var(--surface-container)">
+          ${stackedBarHtml}
+        </div>
+
+        <div class="w-full overflow-x-auto">
+          <table class="budget-table">
+            <thead>
+              <tr>
+                <th>${escapeHtml(getTranslation(L, "catHeader"))}</th>
+                <th class="num">${escapeHtml(getTranslation(L, "perPerson"))}</th>
+                <th class="num">${escapeHtml(getTranslation(L, "groupTotal"))} (${plan.totalTravelers})</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+              <tr class="total-row">
+                <td>${escapeHtml(getTranslation(L, "estTotal"))}</td>
+                <td class="num">${formatINR(plan.grandTotalPP)}</td>
+                <td class="num">${formatINR(plan.grandTotalGroup)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="wb-card">
-        <h3 class="font-semibold text-base mb-3">${escapeHtml(getTranslation(L, "smartTipsTitle"))}</h3>
-        <ul class="space-y-2.5 list-none p-0 m-0">${tipsHtml}</ul>
+      <div class="wb-card space-y-3.5">
+        <div class="flex items-center gap-2.5">
+          <div class="icon-box-terracotta">
+            <span class="material-symbols-outlined text-[20px]">lightbulb</span>
+          </div>
+          <div>
+            <h3 class="font-semibold text-base">${escapeHtml(getTranslation(L, "smartTipsTitle"))}</h3>
+            <p class="text-xs" style="color:var(--text-muted)">Local ways to stretch your ${formatINR(plan.grandTotalGroup)} budget</p>
+          </div>
+        </div>
+        <ul class="space-y-2 list-none p-0 m-0">${tipsHtml}</ul>
       </div>
     `;
 
@@ -561,7 +626,18 @@
     const container = $("bengal-map");
     if (!container || typeof global.L === "undefined") return;
     const meta = DESTINATIONS[destName] || DESTINATIONS["Darjeeling"];
-    $("map-title").textContent = `${destName.split(" (")[0]} — Route & Waypoints`;
+    const cleanDest = destName.split(" (")[0];
+    $("map-title").textContent = `${cleanDest} — Route & Waypoints`;
+    const waypointTitles = (meta.waypoints || []).map((w) => w.title);
+    if ($("map-route-sub")) {
+      $("map-route-sub").textContent = waypointTitles.length ? waypointTitles.join(" → ") : meta.region;
+    }
+    if ($("waypoint-text")) {
+      $("waypoint-text").textContent = "Tap any map pin to preview waypoint highlights";
+    }
+    if ($("waypoint-meta")) {
+      $("waypoint-meta").textContent = `${(meta.waypoints || []).length} stops`;
+    }
 
     if (!state.mapInstance) {
       state.mapInstance = global.L.map("bengal-map", { zoomControl: true, scrollWheelZoom: false }).setView([meta.lat, meta.lon], 8);
@@ -582,19 +658,24 @@
 
     const pinIcon = global.L.divIcon({
       className: "wb-pin",
-      html: `<div style="background:#b84a27;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.35);"></div>`,
-      iconSize: [14, 14],
+      html: `<div style="background:#a53c1a;width:15px;height:15px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.38);"></div>`,
+      iconSize: [15, 15],
       iconAnchor: [7, 7]
     });
 
     (meta.waypoints || []).forEach((wp) => {
       const m = global.L.marker(wp.coords, { icon: pinIcon }).addTo(state.mapInstance);
       m.bindPopup(`<strong>${escapeHtml(wp.title)}</strong><br/><span style="font-size:11px">${escapeHtml(wp.note)}</span>`);
+      m.on("click", () => {
+        if ($("waypoint-text")) {
+          $("waypoint-text").textContent = `${wp.title} — ${wp.note}`;
+        }
+      });
       state.mapMarkers.push(m);
     });
 
     if (meta.route && meta.route.length > 1) {
-      state.mapPolyline = global.L.polyline(meta.route, { color: "#1c4e3a", weight: 3.5, dashArray: "6,6" }).addTo(state.mapInstance);
+      state.mapPolyline = global.L.polyline(meta.route, { color: "#003725", weight: 3.5, dashArray: "7,6" }).addTo(state.mapInstance);
       state.mapInstance.fitBounds(state.mapPolyline.getBounds(), { padding: [24, 24] });
     }
   }
@@ -605,9 +686,9 @@
       .map((txt, i) => {
         const dw = wDays[i] || wDays[wDays.length - 1];
         const weatherPill = dw
-          ? `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold mb-1.5" style="background:var(--card-subtle); border:1px solid var(--border);">
+          ? `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold mb-1.5" style="background:var(--surface-container);">
               <span class="material-symbols-outlined text-[15px]" style="color:var(--forest)">${escapeHtml(dw.meta.symbol)}</span>
-              <span>${dw.max}° / ${dw.min}°C</span>
+              <span class="tabular-nums">${dw.max}° / ${dw.min}°C</span>
               <span style="color:var(--text-muted)">· ${escapeHtml(dw.meta.label)}</span>
               <span style="color:var(--text-muted)">· 💧 ${dw.rain}%</span>
             </div>`
@@ -615,13 +696,13 @@
 
         return `
           <div class="wb-card flex gap-3 items-start">
-            <div class="px-2.5 py-1.5 rounded-lg text-center flex-shrink-0" style="background:var(--forest-soft); color:var(--forest)">
+            <div class="px-3 py-2 rounded-xl text-center flex-shrink-0" style="background:var(--forest-soft); color:var(--on-forest-soft)">
               <div class="text-xs font-bold">Day ${i + 1}</div>
-              <div class="text-[10px]">${escapeHtml(formatShortDate(inp.startDate, i))}</div>
+              <div class="text-[10px] font-medium">${escapeHtml(formatShortDate(inp.startDate, i))}</div>
             </div>
             <div class="min-w-0 flex-1">
               ${weatherPill}
-              <p class="text-xs sm:text-sm">${escapeHtml(txt)}</p>
+              <p class="text-xs sm:text-sm leading-relaxed">${escapeHtml(txt)}</p>
             </div>
           </div>`;
       })
@@ -630,24 +711,40 @@
 
   function renderWeatherUI(w, builtInMeta) {
     const labelSuffix = w.source === "builtin" ? "Built-in Climate" : "Live Forecast";
-    $("weather-note-pill").textContent = `${w.currentTemp}°C • ${w.currentMeta.label} (${labelSuffix})`;
+    $("weather-note-pill").innerHTML = `<span class="material-symbols-outlined text-[16px]">${escapeHtml(
+      w.currentMeta.symbol
+    )}</span><span>${w.currentTemp}°C • ${escapeHtml(w.currentMeta.label)} (${labelSuffix})</span>`;
+
     $("weather-strip").innerHTML = (w.days || [])
       .slice(0, 5)
       .map(
         (d) => `
-      <div class="wb-subcard">
-        <div class="text-[11px] font-semibold" style="color:var(--text-muted)">${escapeHtml(formatShortDate(d.date, 0))}</div>
-        <span class="material-symbols-outlined my-1 text-[20px]" style="color:var(--forest)">${escapeHtml(d.meta.symbol)}</span>
-        <div class="text-xs font-bold">${d.max}° / ${d.min}°C</div>
-        <div class="text-[10px]" style="color:var(--text-muted)">💧 ${d.rain}%</div>
+      <div class="wb-subcard !p-2 sm:!p-2.5 flex flex-col items-center gap-1 text-center">
+        <div class="text-[10px] sm:text-[11px] font-semibold" style="color:var(--text-muted)">${escapeHtml(formatShortDate(d.date, 0))}</div>
+        <span class="material-symbols-outlined text-[21px]" style="color:var(--forest)">${escapeHtml(d.meta.symbol)}</span>
+        <div class="text-xs font-bold tabular-nums leading-tight">${d.max}° <span class="font-normal" style="color:var(--text-muted)">${d.min}°</span></div>
+        <div class="text-[10px] font-semibold tabular-nums" style="color:var(--forest)">💧 ${d.rain}%</div>
       </div>`
       )
       .join("");
 
     if ($("weather-advice") && builtInMeta) {
-      $("weather-advice").innerHTML = `<strong>Best Season:</strong> ${escapeHtml(
-        builtInMeta.bestSeason
-      )} · <strong>Packing Tip:</strong> ${escapeHtml(builtInMeta.packingTip)}`;
+      $("weather-advice").innerHTML = `
+        <div class="flex items-start gap-2.5">
+          <span class="material-symbols-outlined text-[18px] mt-0.5 flex-shrink-0" style="color:var(--terracotta)">calendar_month</span>
+          <div class="min-w-0">
+            <div class="font-semibold text-xs">Best Season</div>
+            <div class="text-xs mt-0.5" style="color:var(--text-muted)">${escapeHtml(builtInMeta.bestSeason)}</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="material-symbols-outlined text-[18px] mt-0.5 flex-shrink-0" style="color:var(--forest)">backpack</span>
+          <div class="min-w-0">
+            <div class="font-semibold text-xs">Packing Tip</div>
+            <div class="text-xs mt-0.5" style="color:var(--text-muted)">${escapeHtml(builtInMeta.packingTip)}</div>
+          </div>
+        </div>
+      `;
     }
   }
 
@@ -667,15 +764,55 @@
   function renderAnandaFeed() {
     const feed = $("ananda-feed");
     feed.innerHTML = state.anandaHistory
-      .map((m) =>
-        m.role === "user"
-          ? `<div class="flex justify-end"><div class="px-3 py-2 rounded-xl text-white max-w-[85%]" style="background:var(--forest)">${escapeHtml(
-              m.text
-            )}</div></div>`
-          : `<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0" style="background:var(--terracotta)">আ</div><div class="px-3 py-2 rounded-xl max-w-[85%] wb-subcard">${escapeHtml(
-              m.text
-            )}</div></div>`
-      )
+      .map((m) => {
+        if (m.role === "user") {
+          return `
+            <div class="flex items-end justify-end gap-2">
+              <div class="max-w-[82%] px-3.5 py-2.5 rounded-xl rounded-tr-sm text-xs sm:text-sm text-white shadow-sm" style="background:var(--forest)">
+                ${escapeHtml(m.text)}
+              </div>
+            </div>`;
+        }
+
+        const cardsHtml = (m.cards || [])
+          .map(
+            (c) => `
+            <div class="p-2.5 rounded-lg space-y-1 shadow-sm" style="background:var(--surface-lowest)">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-semibold text-xs sm:text-sm">${escapeHtml(c.title)}</span>
+                ${c.badge ? `<span class="status-pill-forest !text-[10px]">${escapeHtml(c.badge)}</span>` : ""}
+              </div>
+              <div class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-muted)">
+                <span class="material-symbols-outlined text-[14px]">schedule</span>
+                <span>${escapeHtml(c.meta)}</span>
+              </div>
+              ${
+                c.tags && c.tags.length
+                  ? `<div class="flex flex-wrap gap-1 pt-0.5">${c.tags
+                      .map(
+                        (tg) =>
+                          `<span class="px-2 py-0.5 rounded text-[10px] font-semibold" style="background:var(--surface-container); color:var(--text)">${escapeHtml(tg)}</span>`
+                      )
+                      .join("")}</div>`
+                  : ""
+              }
+            </div>`
+          )
+          .join("");
+
+        return `
+          <div class="flex items-start gap-2.5">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5 shadow-sm" style="background:var(--terracotta)">আ</div>
+            <div class="flex flex-col gap-1 max-w-[88%]">
+              <div class="p-3.5 rounded-xl rounded-tl-sm shadow-sm space-y-2.5 text-xs sm:text-sm" style="background:var(--surface-container); color:var(--text)">
+                <p class="m-0 leading-relaxed">${escapeHtml(m.text)}</p>
+                ${cardsHtml}
+                ${m.footer ? `<p class="m-0 text-[11px]" style="color:var(--text-muted)">${escapeHtml(m.footer)}</p>` : ""}
+              </div>
+              <span class="text-[10px] font-semibold px-1" style="color:var(--text-muted)">Ananda · Offline Cache</span>
+            </div>
+          </div>`;
+      })
       .join("");
     feed.scrollTop = feed.scrollHeight;
   }
@@ -687,35 +824,62 @@
     const q = query.toLowerCase();
 
     if (q.includes("train") || q.includes("rail") || q.includes("bus") || q.includes("cab") || q.includes("price") || q.includes("ticket") || q.includes("suburban")) {
-      const topTrains = (d.trains || []).slice(0, 2).map((t) => `${t.number} ${t.name} (${t.highlightFare}, ${t.timing})`).join(" | ");
+      const trainCards = (d.trains || []).slice(0, 2).map((t) => ({
+        title: `${t.name} (${t.number})`,
+        badge: t.highlightFare,
+        meta: `${t.timing} · ${t.route}`,
+        tags: t.classes ? t.classes.split("/").slice(0, 3).map((s) => s.trim()) : []
+      }));
       const topBus = (d.busesAndCabs || [])[0];
-      return `For ${dest}: Trains → ${topTrains}. Road/Cab → ${topBus ? `${topBus.mode} (${topBus.price})` : "Local cabs available"}. Check the Transit & Stays tab for the IRCTC booking link!`;
+      return {
+        text: `Here are the top rail options for ${dest.split(" (")[0]}:`,
+        cards: trainCards,
+        footer: topBus ? `Road / Cab option: ${topBus.mode} (${topBus.price}). Open Transit & Stays for IRCTC links.` : ""
+      };
     }
     if (q.includes("hotel") || q.includes("stay") || q.includes("room") || q.includes("review")) {
-      return (d.stays || [])
-        .map((s) => `${s.name}: ${s.rating}★ (${s.reviews} reviews), ${formatINR(s.pricePerNight)}/night`)
-        .join(" • ");
+      const stayCards = (d.stays || []).map((s) => ({
+        title: s.name,
+        badge: `${s.rating} ★`,
+        meta: `${s.location} · ${s.reviews} reviews`,
+        tags: [`${formatINR(s.pricePerNight)}/night`, s.badge]
+      }));
+      return {
+        text: `Top Google-reviewed stays in ${dest.split(" (")[0]}:`,
+        cards: stayCards
+      };
     }
     if (q.includes("budget") || q.includes("cost") || q.includes("total") || q.includes("tip")) {
-      return `Estimated Total for ${plan.totalTravelers} travelers (${plan.days}d, ${plan.rooms} room): ${formatINR(plan.grandTotalGroup)} (${formatINR(plan.grandTotalPP)}/person). Top tip: ${(plan.smartTips || [])[0]}`;
+      return {
+        text: `Estimated Total for ${plan.totalTravelers} travelers (${plan.days}d, ${plan.rooms} room): ${formatINR(plan.grandTotalGroup)} (${formatINR(plan.grandTotalPP)}/person).`,
+        footer: `Top tip: ${(plan.smartTips || [])[0]}`
+      };
     }
     if (q.includes("weather") || q.includes("climate") || q.includes("temp") || q.includes("rain") || q.includes("cold") || q.includes("wear") || q.includes("pack")) {
       const w = getBuiltInWeather(dest, state.inputs.startDate, plan.days);
       const day0 = w.days[0];
-      return `Weather in ${w.location} around ${formatShortDate(state.inputs.startDate, 0)}: ${day0.max}°/${day0.min}°C (${day0.meta.label}, ~${day0.rain}% rain chance). Best season: ${w.bestSeason}. Tip: ${w.packingTip}`;
+      return {
+        text: `Weather in ${w.location} around ${formatShortDate(state.inputs.startDate, 0)}: ${day0.max}°/${day0.min}°C (${day0.meta.label}, ~${day0.rain}% rain chance).`,
+        footer: `Best season: ${w.bestSeason}. Tip: ${w.packingTip}`
+      };
     }
     if (q.includes("food") || q.includes("eat") || q.includes("veg")) {
-      return `Top ${state.inputs.foodPref} picks in ${dest}: ${plan.foodList.slice(0, 3).join(" • ")}`;
+      return {
+        text: `Top ${state.inputs.foodPref} picks in ${dest.split(" (")[0]}: ${plan.foodList.slice(0, 3).join(" • ")}`
+      };
     }
-    return `Nomoshkar! Your ${plan.days}-day ${dest} trip is ready (${formatINR(plan.grandTotalGroup)} total). Ask about train timings, suburban EMUs, stays & Google ratings, or food picks!`;
+    return {
+      text: `Nomoshkar! Your ${plan.days}-day ${dest.split(" (")[0]} trip is ready (${formatINR(plan.grandTotalGroup)} total). Ask about train timings, stays & ratings, weather, or food picks!`
+    };
   }
 
   function handleAnandaSend(raw) {
     const text = String(raw || "").trim();
     if (!text) return;
     $("ananda-input").value = "";
+    const reply = answerAnandaOffline(text);
     state.anandaHistory.push({ role: "user", text });
-    state.anandaHistory.push({ role: "assistant", text: answerAnandaOffline(text) });
+    state.anandaHistory.push({ role: "assistant", text: reply.text, cards: reply.cards, footer: reply.footer });
     renderAnandaFeed();
   }
 
@@ -769,6 +933,30 @@
       )
       .join("");
 
+    const statsHtml = (ABOUT_INFO.whyUseStats || [])
+      .map(
+        (st) => `
+      <div class="wb-subcard !p-3">
+        <div class="font-serif-head text-2xl font-medium tabular-nums" style="color:var(--forest)">${escapeHtml(st.value)}</div>
+        <div class="text-xs font-bold mt-0.5">${escapeHtml(st.label)}</div>
+        <div class="text-[11px] mt-1 leading-snug" style="color:var(--text-muted)">${escapeHtml(st.sub)}</div>
+      </div>`
+      )
+      .join("");
+
+    const reasonsHtml = (ABOUT_INFO.whyUseReasons || [])
+      .map(
+        (r, idx) => `
+      <div class="wb-subcard-low flex items-start gap-2.5">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5" style="background:var(--forest-soft); color:var(--on-forest-soft)">${idx + 1}</span>
+        <div>
+          <div class="font-bold text-xs sm:text-sm">${escapeHtml(r.title)}</div>
+          <p class="text-xs mt-0.5 leading-relaxed" style="color:var(--text-muted)">${escapeHtml(r.desc)}</p>
+        </div>
+      </div>`
+      )
+      .join("");
+
     const projectsHtml = (ABOUT_INFO.projects || [])
       .map(
         (p) => `
@@ -778,7 +966,7 @@
             <span class="material-symbols-outlined text-[18px]" style="color:var(--forest)">${escapeHtml(p.icon)}</span>
             <span>${escapeHtml(p.title)}</span>
           </h4>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded" style="background:var(--terracotta-soft); color:var(--terracotta)">${escapeHtml(p.badge)}</span>
+          <span class="status-pill-terracotta !text-[10px]">${escapeHtml(p.badge)}</span>
         </div>
         <p class="text-xs" style="color:var(--text-muted)">${escapeHtml(p.desc)}</p>
       </div>`
@@ -803,6 +991,17 @@
           <span class="material-symbols-outlined text-[17px] flex-shrink-0" style="color:var(--terracotta)">info</span>
           <span><strong>Accuracy &amp; Verification Notice:</strong> ${escapeHtml(ABOUT_INFO.accuracyNotice)}</span>
         </div>
+      </div>
+
+      <!-- Why Use Where is my trip? (Reasons + Backing Statistics) -->
+      <div class="wb-card space-y-3.5">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--terracotta)">Evidence &amp; Impact</span>
+          <h3 class="font-serif-head text-xl font-bold mt-0.5">Why People Should Use Where is my trip</h3>
+          <p class="text-xs mt-1" style="color:var(--text-muted)">Backed by official Ministry of Tourism &amp; West Bengal Tourism Department figures alongside our zero-API offline architecture:</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">${statsHtml}</div>
+        <div class="space-y-2 pt-1">${reasonsHtml}</div>
       </div>
 
       <!-- About the Creator Card (with Picture & Phone Copy) -->
@@ -999,6 +1198,10 @@
     $("btn-fit-map").addEventListener("click", () => {
       if (state.mapPolyline && state.mapInstance) {
         state.mapInstance.fitBounds(state.mapPolyline.getBounds(), { padding: [24, 24] });
+        const meta = DESTINATIONS[state.inputs.destination] || DESTINATIONS["Darjeeling"];
+        if ($("waypoint-text") && meta && meta.waypoints) {
+          $("waypoint-text").textContent = `Route fitted: ${meta.waypoints.map((w) => w.title).join(" → ")}`;
+        }
       }
     });
 
